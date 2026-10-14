@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Вход — RUI Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0f172a; color: #e2e8f0;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  }
+  .card {
+    background: #1e293b; border-radius: 12px; padding: 40px 36px;
+    max-width: 420px; width: 92%; text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,.4);
+  }
+  h1 { font-size: 22px; margin-bottom: 8px; }
+  p { color: #94a3b8; font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
+  .btn {
+    display: inline-block; background: #2aabee; color: #fff; text-decoration: none;
+    font-size: 16px; font-weight: 600; padding: 12px 28px; border-radius: 8px;
+  }
+  .btn:hover { background: #229ad2; }
+  .error {
+    display: %HAS_ERROR%; background: #7f1d1d; color: #fecaca;
+    border-radius: 8px; padding: 10px; margin-bottom: 20px; font-size: 14px;
+  }
+  .hint { font-size: 12px; color: #64748b; margin-top: 20px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Дашборд RUI</h1>
+    <div class="error">Ссылка недействительна или истекла. Запросите новую в боте.</div>
+    <p>Вход выполняется через Telegram-бота. Нажмите кнопку, отправьте боту <b>/startweb</b> — и вернитесь по кнопке «Открыть дашборд» из чата.</p>
+    <a class="btn" href="https://t.me/%BOT_USERNAME%?start=startweb">Открыть бота в Telegram</a>
+    <div class="hint">Ссылка для входа одноразовая и действует 5 минут · <a href="/" style="color:#94a3b8">о сервисе — на главной</a></div>
+  </div>
+</body>
+</html>

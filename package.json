@@ -1,0 +1,26 @@
+{
+  "name": "rui-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot: Relative Undervaluation Index (RUI) for a crypto basket",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "compression": "^1.8.2",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "grammy": "^1.46.0",
+    "node-cron": "^4.6.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.19.3"
+  }
+}

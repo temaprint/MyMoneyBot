@@ -1,0 +1,83 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: rui
+      POSTGRES_USER: rui
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rui"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    # Память под лимит контейнера, а не хоста
+    command: >
+      postgres -c shared_buffers=128MB -c max_connections=30
+               -c work_mem=4MB -c effective_cache_size=256MB
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Порт наружу не публикуем (доступ только внутри compose-сети).
+    # Для локальной разработки: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
+
+  migrate:
+    build:
+      context: .
+      target: migrate
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://rui:${DB_PASSWORD}@db:5432/rui
+    command: ["npx", "prisma", "db", "push"]
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "1"
+
+  app:
+    build:
+      context: .
+      target: app
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:${APP_PORT:-3005}:3000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://rui:${DB_PASSWORD}@db:5432/rui
+      # V8-потолок ниже лимита контейнера (512m)
+      NODE_OPTIONS: "--max-old-space-size=432"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.50'
+        reservations:
+          memory: 256m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres-data:

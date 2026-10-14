@@ -1,0 +1,9 @@
+# Только для локальной разработки: поднимает БД с маппингом на loopback.
+# На сервер не деплоится (deploy.sh исключает этот файл).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
+#   npm start   # DATABASE_URL=postgresql://rui:PASS@127.0.0.1:5434/rui
+services:
+  db:
+    ports:
+      - "127.0.0.1:5434:5432"

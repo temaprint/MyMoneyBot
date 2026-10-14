@@ -1,0 +1,14 @@
+# Никогда не попадает в build context и образ
+.git
+.gitignore
+node_modules
+data
+.env
+.env.*
+*.log
+logs/
+.DS_Store
+.claude
+docker-compose*.yml
+deploy.sh
+README.md

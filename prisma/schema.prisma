@@ -1,0 +1,228 @@
+generator client {
+  provider = "prisma-client-js"
+  // Образ на alpine: движки под linux-musl, иначе миграции падают на сервере
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Пользователи дашборда (создаются при первом входе через бота или первом /finance)
+model User {
+  id              String            @id @default(cuid())
+  telegramId      String            @unique
+  username        String?
+  firstName       String?
+  lastName        String?
+  photoUrl        String?
+  householdId     String?
+  isAdmin         Boolean           @default(false) // доступ к разделу «Админ»
+  isBlocked       Boolean           @default(false) // блокировка: без бота и дашборда
+  lastSeenAt      DateTime? // последняя активность (запрос к API или сообщение боту)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  sessions        Session[]
+  accounts        Account[]
+  transactions    Transaction[]
+  wealthSnapshots WealthSnapshot[]
+  aiReports       AiReport[]
+  deals           Deal[]
+  household       Household?        @relation(fields: [householdId], references: [id], onDelete: SetNull)
+}
+
+// Семья: общий доступ к счетам/тратам (все члены видят и правят всё)
+model Household {
+  id        String            @id @default(cuid())
+  createdAt DateTime          @default(now())
+  members   User[]
+  invites   HouseholdInvite[]
+}
+
+// Одноразовое приглашение в семью (deep-link t.me/<bot>?start=fam_<token>)
+model HouseholdInvite {
+  id          String     @id @default(cuid())
+  tokenHash   String     @unique
+  householdId String
+  createdAt   DateTime   @default(now())
+  expiresAt   DateTime
+  usedById    String?
+  usedAt      DateTime?
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Одноразовый токен входа (бот -> браузер), TTL 5 минут
+model LoginToken {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  telegramId String
+  username   String?
+  firstName  String?
+  lastName   String?
+  photoUrl   String?
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+  usedAt     DateTime?
+}
+
+// История RUI для графиков: одна строка = одна монета в одном окне в момент ts
+model Snapshot {
+  id     BigInt   @id @default(autoincrement())
+  ts     DateTime
+  symbol String
+  window String // '24h' | '7d' | '30d' | '365d'
+  r      Float
+  rui    Float
+  mean   Float
+
+  @@index([window, ts])
+}
+
+// Дневные цены закрытия (USD) — бэкфилл с Binance + актуализация снапшотами.
+// Из цен RUI/R считаются на лету за любой период.
+model Price {
+  date   DateTime // день свечи (00:00 UTC)
+  symbol String
+  price  Float
+
+  @@id([symbol, date])
+  @@index([date])
+}
+
+// Сохранённые ИИ-отчёты: к анализу можно вернуться без повторного запроса к GLM.
+// Ключ кэша — пара (window, range); свежий отчёт (< TTL) переиспользуется.
+model AiReport {
+  id         String   @id @default(cuid())
+  set        String   @default("coin") // 'coin' | 'fiat' — раздел дашборда
+  window     String // '24h' | '7d' | '30d' | '365d' (для фиата — '')
+  range      String // '1d' | '7d' | '30d' | '180d' | '1y' | 'all'
+  extra      String? // доп. указание пользователя (входит в ключ кэша)
+  periodFrom String // 'YYYY-MM-DD'
+  periodTo   String // 'YYYY-MM-DD'
+  text       String
+  model      String
+  userId     String? // кто запустил генерацию (для учёта токенов; кэш общий)
+  tokensIn   Int      @default(0) // входные токены GLM
+  tokensOut  Int      @default(0) // выходные токены GLM
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([window, range, createdAt])
+  @@index([createdAt])
+  @@index([userId])
+}
+
+// Чаты с включённым ежедневным автопостом
+model ChatSubscription {
+  chatId String @id
+}
+
+// Счёт личных финансов: валюта = USD, RUB, THB или крипта корзины
+model Account {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  currency    String // 'USD'|'RUB'|'THB'|'TRX'|'BNB'|'TON'|'BTC'|'ETH'|'LTC'
+  startAmount Float    @default(0) // стартовый баланс при создании
+  balance     Float    @default(0) // денормализованный текущий баланс (в валюте счёта)
+  isDefault   Boolean  @default(false)
+  isSavings   Boolean  @default(false) // накопительный счёт (сбережения, отдельный блок)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([userId])
+}
+
+// Траты и поступления. amount всегда > 0, знак в kind.
+// usd — сумма в USD на момент ввода (для аналитики без пересчёта задним числом);
+// accountAmount — сумма в валюте счёта на момент ввода (точный откат баланса при правке/удалении)
+// Перевод между счетами = пара строк (transfer_out + transfer_in) с общим transferId.
+model Transaction {
+  id            BigInt   @id @default(autoincrement())
+  userId        String
+  accountId     String
+  kind          String // 'expense' | 'income' | 'transfer_out' | 'transfer_in'
+  amount        Float
+  currency      String
+  usd           Float
+  accountAmount Float    @default(0)
+  excluded    Boolean  @default(false) // не учитывать в графике трат (баланс счёта не затрагивает)
+  description String?
+  transferId    String?
+  dealId        String? // сделка-позиция: строка покупки/продажи (управление в разделе «Сделки»)
+  createdAt   DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  deal    Deal?   @relation(fields: [dealId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([accountId])
+  @@index([transferId])
+  @@index([dealId])
+}
+
+// Сделка-позиция: купил крипту со счёта (списание), монеты живут внутри сделки.
+// Богатство = счета + открытые сделки; пороги alertUp/alertDown шлют уведомление
+// в Telegram при движении цены от входа (одноразово на порог).
+model Deal {
+  id               String    @id @default(cuid())
+  userId           String
+  symbol           String // 'TRX'|'BNB'|'TON'|'BTC'|'ETH'|'LTC'
+  qty              Float // сколько куплено (в монетах)
+  spentAmount      Float // потрачено в валюте счёта списания
+  spentCurrency    String
+  spentUsd         Float // стоимость входа в USD на момент сделки
+  buyPriceUsd      Float // spentUsd / qty — цена входа
+  status           String    @default("open") // 'open' | 'closed'
+  proceedsAmount   Float? // получено при закрытии (в валюте счёта зачисления)
+  proceedsCurrency String?
+  proceedsUsd      Float?
+  alertUp          Float? // уведомить при росте ≥ N% от входа
+  alertDown        Float? // уведомить при падении ≤ N% от входа
+  notifiedUpAt     DateTime? // антиспам: сигнал по порогу шлётся один раз (сброс при смене порога)
+  notifiedDownAt   DateTime?
+  note             String?
+  createdAt        DateTime  @default(now())
+  closedAt         DateTime?
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+// Богатство в USD: одна точка на пользователя в день (upsert в течение дня)
+model WealthSnapshot {
+  userId     String
+  day        DateTime // 00:00 UTC
+  totalUsd   Float
+  savingsUsd Float    @default(0) // доля накопительных счетов (для «лезу ли в накопления»)
+  ts         DateTime @updatedAt // момент последнего обновления
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, day])
+  @@index([day])
+}

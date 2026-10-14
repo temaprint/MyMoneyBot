@@ -1,0 +1,25 @@
+# ── Секреты (реальные значения — только в .env, в git не попадают) ──
+.env
+.env.*
+!.env.example
+
+# ── Зависимости ──
+node_modules/
+
+# ── Локальные данные и логи ──
+data/
+logs/
+*.log
+npm-debug.log*
+
+# ── Claude Code (локальные настройки, история команд) ──
+.claude/
+
+# ── Системное ──
+.DS_Store
+Thumbs.db
+
+# ── Редакторы ──
+.idea/
+.vscode/
+*.swp

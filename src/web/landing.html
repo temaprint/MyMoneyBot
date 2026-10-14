@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RUI — индекс недооцененности крипты и фиата + семейные финансы</title>
+<meta name="description" content="RUI оценивает каждую монету и валюту относительно корзины: кто отстал и готов к догоняющему росту. Telegram-бот и веб-дашборд: индексы COIN и FIAT, семейные финансы в 9 валютах, ИИ-аналитика, калькулятор обмена.">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0f172a; color: #e2e8f0; line-height: 1.6;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  /* --- Шапка --- */
+  header.site {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 48px;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 700; }
+  .logo .dot {
+    width: 34px; height: 34px; border-radius: 9px; background: #2aabee;
+    display: flex; align-items: center; justify-content: center; font-size: 17px;
+  }
+  .site nav { display: flex; gap: 10px; align-items: center; }
+  .site nav a { color: #94a3b8; text-decoration: none; font-size: 14px; padding: 8px 14px; border-radius: 8px; }
+  .site nav a:hover { color: #e2e8f0; background: #1e293b; }
+  .site nav a.btn {
+    background: #2aabee; color: #fff; font-weight: 600;
+  }
+  .site nav a.btn:hover { background: #229ad2; color: #fff; }
+
+  /* --- Hero --- */
+  .hero { text-align: center; max-width: 780px; margin: 0 auto 56px; }
+  .hero .badge {
+    display: inline-block; background: #1e293b; color: #94a3b8; border-radius: 999px;
+    font-size: 13px; padding: 6px 14px; margin-bottom: 18px;
+  }
+  .hero h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.2; margin-bottom: 16px; }
+  .hero h1 .accent { color: #2aabee; }
+  .hero p.lead { color: #94a3b8; font-size: 17px; margin-bottom: 28px; }
+  .hero .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn-main {
+    display: inline-block; background: #2aabee; color: #fff; text-decoration: none;
+    font-size: 16px; font-weight: 600; padding: 13px 30px; border-radius: 10px;
+  }
+  .btn-main:hover { background: #229ad2; }
+  .btn-ghost {
+    display: inline-block; border: 1px solid #475569; color: #cbd5e1; text-decoration: none;
+    font-size: 16px; padding: 13px 30px; border-radius: 10px;
+  }
+  .btn-ghost:hover { color: #fff; border-color: #94a3b8; }
+  .hero .note { color: #64748b; font-size: 13px; margin-top: 16px; }
+
+  /* --- Формула RUI --- */
+  .formula-card {
+    background: #1e293b; border-radius: 14px; padding: 28px 24px; text-align: center;
+    margin-bottom: 64px;
+  }
+  .formula-card h2 { font-size: 18px; margin-bottom: 14px; }
+  .formula {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 20px;
+    background: #0f172a; border-radius: 10px; padding: 14px 18px; display: inline-block; margin-bottom: 18px;
+  }
+  .formula b { color: #2aabee; }
+  .legend { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .legend div {
+    background: #0f172a; border-radius: 10px; padding: 12px 18px; font-size: 14px; min-width: 220px;
+  }
+  .legend b { display: block; font-size: 15px; margin-bottom: 2px; }
+  .legend .pos b { color: #4ade80; }
+  .legend .mid b { color: #94a3b8; }
+  .legend .neg b { color: #f87171; }
+
+  /* --- Секции возможностей --- */
+  section { margin-bottom: 64px; }
+  section > h2 { font-size: 24px; text-align: center; margin-bottom: 8px; }
+  section > p.sub { color: #94a3b8; text-align: center; max-width: 640px; margin: 0 auto 28px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .card {
+    background: #1e293b; border-radius: 14px; padding: 22px;
+  }
+  .card .ico { font-size: 26px; margin-bottom: 10px; }
+  .card h3 { font-size: 17px; margin-bottom: 8px; }
+  .card p { color: #94a3b8; font-size: 14px; }
+  .card p + p { margin-top: 8px; }
+  .card .tag {
+    display: inline-block; background: #0f172a; color: #64748b; font-size: 12px;
+    border-radius: 6px; padding: 3px 8px; margin: 10px 6px 0 0;
+  }
+
+  /* --- Как начать --- */
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; counter-reset: step; }
+  .step { background: #1e293b; border-radius: 14px; padding: 20px; position: relative; }
+  .step .num {
+    width: 30px; height: 30px; border-radius: 50%; background: #2aabee; color: #fff;
+    font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center;
+    margin-bottom: 12px;
+  }
+  .step h3 { font-size: 15px; margin-bottom: 6px; }
+  .step p { color: #94a3b8; font-size: 13px; }
+  .step code {
+    background: #0f172a; border-radius: 5px; padding: 1px 6px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; color: #cbd5e1;
+  }
+
+  /* --- Таблица команд --- */
+  .cmd-table { width: 100%; border-collapse: collapse; background: #1e293b; border-radius: 14px; overflow: hidden; }
+  .cmd-table th, .cmd-table td { padding: 12px 18px; text-align: left; font-size: 14px; }
+  .cmd-table th { color: #64748b; font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .cmd-table tr { border-top: 1px solid #293548; }
+  .cmd-table td:first-child { font-family: ui-monospace, "SF Mono", Menlo, monospace; color: #2aabee; white-space: nowrap; }
+
+  /* --- Подвал --- */
+  footer.site {
+    border-top: 1px solid #1e293b; padding-top: 28px; margin-top: 16px;
+    display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  footer.site p { color: #64748b; font-size: 13px; }
+  footer.site a { color: #94a3b8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="site">
+    <div class="logo"><span class="dot">📈</span>RUI</div>
+    <nav>
+      <a href="#features">Возможности</a>
+      <a href="#start">Как начать</a>
+      <a href="#commands">Команды</a>
+      <a class="btn" href="https://t.me/%BOT_USERNAME%">Открыть бота</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <span class="badge">Telegram-бот + веб-дашборд · вход без пароля</span>
+    <h1>Индекс относительной <span class="accent">недооцененности</span> крипты и фиата</h1>
+    <p class="lead">
+      RUI показывает, какая монета или валюта отстала от своей корзины и готова к догоняющему росту,
+      а какая перегрета. Плюс — семейные финансы в 9 валютах и ИИ-аналитика периода с веб-поиском.
+    </p>
+    <div class="cta">
+      <a class="btn-main" href="https://t.me/%BOT_USERNAME%?start=startweb">Начать в Telegram</a>
+      <a class="btn-ghost" href="/login">Войти в дашборд</a>
+    </div>
+    <p class="note">Вход в дашборд — одноразовой ссылкой из бота, без паролей и регистраций</p>
+  </div>
+
+  <div class="formula-card">
+    <h2>Как считается RUI</h2>
+    <div class="formula">RUI = <b>M</b> − R &nbsp;·&nbsp; M — средняя корзины, R — доходность актива</div>
+    <div class="legend">
+      <div class="pos"><b>RUI &gt; 0 — недооценена</b>Актив отстал от корзины: кандидат на догоняющий рост</div>
+      <div class="mid"><b>RUI ≈ 0 — паритет</b>Движется в среднем темпе группы</div>
+      <div class="neg"><b>RUI &lt; 0 — перегрета</b>Опережает корзину: рост уже отыгран</div>
+    </div>
+  </div>
+
+  <section id="features">
+    <h2>Что внутри</h2>
+    <p class="sub">Один сервис для взгляда на рынки и ведения семейных финансов — в боте и на сайте</p>
+    <div class="cards">
+      <div class="card">
+        <div class="ico">📊</div>
+        <h3>Индекс COIN</h3>
+        <p>Корзина из 6 монет: TRX, BNB, TON, BTC, ETH, LTC. Снапшоты каждый час, окна 24ч · 7д · 30д · 365д, история рядов до 5 лет.</p>
+        <p>Графики RUI, доходности R и цен; таблица «кто недооценён прямо сейчас».</p>
+        <span class="tag">TRX</span><span class="tag">BNB</span><span class="tag">TON</span><span class="tag">BTC</span><span class="tag">ETH</span><span class="tag">LTC</span>
+      </div>
+      <div class="card">
+        <div class="ico">💱</div>
+        <h3>Индекс FIAT</h3>
+        <p>Тот же метод для валют: USD, RUB, THB, KRW против доллара. Кто укрепился, кто отстал, кто перегрет — за 7 дней, 30 дней, 180 дней или год.</p>
+        <p>Курсы, графики и RUI по каждой валюте.</p>
+        <span class="tag">USD</span><span class="tag">RUB</span><span class="tag">THB</span><span class="tag">KRW</span>
+      </div>
+      <div class="card">
+        <div class="ico">💰</div>
+        <h3>Семейные финансы</h3>
+        <p>Счета в 9 валютах: USD, RUB, THB и крипта (TRX, BNB, TON, BTC, ETH, LTC). Траты — одной строкой прямо в бот: «150 кофе», «+50000 зарплата», «0.01 btc».</p>
+        <p>Переводы между счетами с конвертацией, накопительные счёта, график богатства, траты по дням и вердикт «богатеешь или беднеешь» за 7 и 30 дней.</p>
+        <span class="tag">мультивалютность</span><span class="tag">переводы</span><span class="tag">накопления</span>
+      </div>
+      <div class="card">
+        <div class="ico">👨‍👩‍👧</div>
+        <h3>Семейный доступ</h3>
+        <p>Пригласите близких по @username — все участники видят общие счета и операции, добавляют свои траты с основного счёта (⭐) одной строкой.</p>
+        <p>Сводка и график богатства считаются на всю семью.</p>
+        <span class="tag">общие счета</span><span class="tag">история операций</span>
+      </div>
+      <div class="card">
+        <div class="ico">🤖</div>
+        <h3>ИИ-аналитика периода</h3>
+        <p>Разбор выбранного периода по корзине: что происходило, конкретные причины движения каждой монеты и валюты (новости, ставки, регуляторика) — с веб-поиском.</p>
+        <p>Итог: на что смотреть дальше. Архив отчётов сохраняется.</p>
+        <span class="tag">веб-поиск</span><span class="tag">архив отчётов</span>
+      </div>
+      <div class="card">
+        <div class="ico">🧮</div>
+        <h3>Калькулятор обмена</h3>
+        <p>Крипта и фиат в одном калькуляторе: фиксируйте сумму или курс, меняйте валюты местами, выбирайте промежуточную валюту обмена.</p>
+        <p>Курсы подтягиваются те же, что и в индексах.</p>
+        <span class="tag">крипта + фиат</span><span class="tag">фиксация курса</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="start">
+    <h2>Как начать</h2>
+    <p class="sub">Полноценный старт за пару минут — без регистрации</p>
+    <div class="steps">
+      <div class="step">
+        <div class="num">1</div>
+        <h3>Откройте бота</h3>
+        <p>Нажмите «Начать в Telegram» и отправьте <code>/start</code>. Под полем ввода появятся кнопки: Финансы · RUI · Дашборд · Помощь.</p>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <h3>Ведите финансы</h3>
+        <p>Создайте счёт <code>/finance add Наличные thb 3000</code> и пишите траты в личку: <code>150 кофе</code>, <code>+50000 зарплата</code>.</p>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <h3>Смотрите индексы</h3>
+        <p><code>/rui 7д</code> — индекс по корзине монет. Подпишитесь на ежедневный автопост: <code>/subscribe</code>.</p>
+      </div>
+      <div class="step">
+        <div class="num">4</div>
+        <h3>Откройте дашборд</h3>
+        <p><code>/startweb</code> — одноразовая ссылка на графики, историю до 5 лет, редактор финансов и ИИ-аналитику.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="commands">
+    <h2>Команды бота</h2>
+    <p class="sub">В личке работает и свободный ввод: «150 кофе» спишется с основного счёта (⭐)</p>
+    <table class="cmd-table">
+      <thead><tr><th>Команда</th><th>Что делает</th></tr></thead>
+      <tbody>
+        <tr><td>/rui [окно]</td><td>Индекс недооцененности корзины монет. Окна: 24h, 7d, 30d, 365d (или 24ч, 7д, 30д, 365д). Без аргумента — 30д</td></tr>
+        <tr><td>/finance</td><td>Сводка «богатею или беднею»: счета, динамика 7д/30д, накопления</td></tr>
+        <tr><td>/finance add</td><td>Создать счёт: <code>/finance add &lt;имя&gt; &lt;валюта&gt; [стартовая сумма] [накоп]</code>. Валюты: usd rub thb trx bnb ton btc eth ltc</td></tr>
+        <tr><td>/finance del</td><td>Удалить счёт вместе с историей: <code>/finance del &lt;имя&gt;</code></td></tr>
+        <tr><td>/spend · /income</td><td>Явная запись траты/поступления: <code>/spend 150 кофе</code>, <code>/income +50000 зарплата</code></td></tr>
+        <tr><td>/family @username</td><td>Пригласить близкого в семью: общие счета, траты и график богатства</td></tr>
+        <tr><td>/startweb</td><td>Одноразовая ссылка на вход в веб-дашборд</td></tr>
+        <tr><td>/subscribe</td><td>Ежедневный автопост RUI в чат · <code>/unsubscribe</code> — отключить</td></tr>
+        <tr><td>/help</td><td>Полная справка</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="hero" style="margin-bottom:0">
+    <h2 style="font-size:26px;margin-bottom:12px">Готовы посмотреть на рынки глазами RUI?</h2>
+    <p class="lead">Откройте бота — первый индекс и первый счёт появятся меньше чем за минуту.</p>
+    <div class="cta">
+      <a class="btn-main" href="https://t.me/%BOT_USERNAME%">Открыть бота в Telegram</a>
+      <a class="btn-ghost" href="/login">Войти в дашборд</a>
+    </div>
+  </div>
+
+  <footer class="site">
+    <p>RUI · Индекс относительной недооцененности</p>
+    <p>Вход только через Telegram — без паролей · <a href="https://t.me/%BOT_USERNAME%">@%BOT_USERNAME%</a></p>
+  </footer>
+
+</div>
+</body>
+</html>

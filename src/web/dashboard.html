@@ -1,0 +1,2035 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RUI Dashboard</title>
+<script src="/vendor/echarts.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0f172a; color: #e2e8f0; padding: 20px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+  h1 { font-size: 20px; }
+  .prof-card { display: flex; align-items: center; gap: 14px; }
+  .prof-avatar { width: 56px; height: 56px; border-radius: 50%; }
+  .prof-card .prof-info { flex: 1; }
+  .prof-name { font-size: 17px; font-weight: 600; color: #e2e8f0; }
+  .logout {
+    background: none; border: 1px solid #475569; color: #94a3b8; border-radius: 6px;
+    padding: 5px 12px; cursor: pointer; font-size: 13px;
+  }
+  .logout:hover { color: #e2e8f0; border-color: #94a3b8; }
+  .controls { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+  .group { display: flex; background: #1e293b; border-radius: 8px; padding: 3px; }
+  .group button {
+    background: none; border: none; color: #94a3b8; font-size: 13px;
+    padding: 6px 14px; border-radius: 6px; cursor: pointer;
+  }
+  .group button.active { background: #334155; color: #fff; font-weight: 600; }
+  .label { font-size: 12px; color: #64748b; margin-right: -10px; }
+  #chart {
+    width: 100%; height: 460px; background: #1e293b; border-radius: 12px;
+  }
+  #fiatChart {
+    width: 100%; height: 460px; background: #1e293b; border-radius: 12px;
+  }
+  h2 { font-size: 16px; margin: 26px 0 10px; }
+  table { width: 100%; border-collapse: collapse; background: #1e293b; border-radius: 12px; overflow: hidden; }
+  th, td { padding: 10px 16px; text-align: left; font-size: 14px; }
+  th { color: #64748b; font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  td.num { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  tr { border-top: 1px solid #293548; }
+  .pos { color: #4ade80; }
+  .neg { color: #f87171; }
+  .mark { color: #94a3b8; font-size: 13px; }
+  #meta { color: #64748b; font-size: 12px; margin-top: 8px; }
+  .ai-box { background: #1e293b; border-radius: 12px; padding: 16px 18px; margin-top: 10px; }
+  .ai-box .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .ai-btn {
+    background: #2aabee; color: #fff; border: none; border-radius: 8px;
+    font-size: 14px; font-weight: 600; padding: 9px 18px; cursor: pointer;
+  }
+  .ai-btn:hover:not(:disabled) { background: #229ad2; }
+  .ai-btn:disabled { opacity: .5; cursor: wait; }
+  .ai-status { color: #94a3b8; font-size: 13px; }
+  .ai-extra {
+    width: 100%; background: #0f172a; border: 1px solid #334155; color: #e2e8f0;
+    border-radius: 8px; padding: 8px 10px; font-size: 13px; margin-top: 10px;
+  }
+  .ai-extra:focus { outline: none; border-color: #2aabee; }
+  .ai-out { color: #cbd5e1; font-size: 14px; line-height: 1.65; margin-top: 12px; }
+  .ai-out:empty { display: none; }
+  .ai-out h3 { color: #e2e8f0; font-size: 15px; margin: 14px 0 6px; }
+  .ai-out h3:first-child { margin-top: 0; }
+  .ai-out ul { margin: 6px 0 6px 20px; }
+  .ai-out li { margin: 3px 0; }
+  .ai-out p { margin: 8px 0; }
+  .ai-hist { margin-top: 10px; }
+  .ai-hist-item {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    background: #1e293b; border: none; color: #cbd5e1; border-radius: 8px;
+    padding: 10px 14px; margin-bottom: 6px; cursor: pointer; width: 100%;
+    font-size: 13px; text-align: left;
+  }
+  .ai-hist-item:hover { background: #26334a; }
+  .ai-hist-item .when { color: #64748b; white-space: nowrap; }
+  .ai-hist-empty { color: #64748b; font-size: 13px; }
+
+  /* --- Редактор финансов --- */
+  .sec-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .sec-head h2 { margin: 0; }
+  .mini-btn {
+    background: #2aabee; color: #fff; border: none; border-radius: 8px;
+    font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer;
+  }
+  .mini-btn:hover { background: #229ad2; }
+  .row-btn {
+    background: none; border: none; color: #64748b; cursor: pointer;
+    font-size: 14px; padding: 3px 6px; border-radius: 6px;
+  }
+  .row-btn:hover { color: #e2e8f0; background: #334155; }
+  .row-btn.del:hover { color: #f87171; }
+  #finModal {
+    position: fixed; inset: 0; background: rgba(2, 6, 23, .72);
+    display: none; align-items: center; justify-content: center; z-index: 100;
+  }
+  #finModal.open { display: flex; }
+  .fin-card {
+    background: #1e293b; border-radius: 12px; padding: 20px 22px;
+    width: min(440px, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow: auto;
+  }
+  .fin-card h3 { font-size: 16px; margin-bottom: 4px; }
+  .fin-card label { display: block; font-size: 12px; color: #94a3b8; margin: 12px 0 4px; }
+  .fin-card input, .fin-card select {
+    width: 100%; background: #0f172a; border: 1px solid #334155; color: #e2e8f0;
+    border-radius: 8px; padding: 8px 10px; font-size: 14px;
+  }
+  .fin-card .pair { display: flex; gap: 10px; }
+  .fin-card .pair > div { flex: 1; }
+  .fin-card .actions { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
+  .btn-ghost {
+    background: none; border: 1px solid #475569; color: #94a3b8; border-radius: 8px;
+    padding: 8px 14px; cursor: pointer; font-size: 14px;
+  }
+  .btn-ghost:hover { color: #e2e8f0; border-color: #94a3b8; }
+  #finErr { color: #f87171; font-size: 13px; margin-top: 10px; min-height: 16px; }
+  /* колонка «Кто» — только когда в семье больше одного участника */
+  #finTxTable.hide-who .who { display: none; }
+  /* строка-заголовок дня в «Последних операциях» */
+  .tx-day td {
+    background: #172033; color: #94a3b8; font-size: 12px; font-weight: 600;
+    padding: 6px 10px; letter-spacing: .02em; border-top: 1px solid #334155;
+  }
+  .pager { display: flex; align-items: center; gap: 10px; margin-top: 8px; color: #64748b; font-size: 13px; }
+  .pager .mini-btn[disabled] { opacity: .4; cursor: default; }
+
+  /* --- Семья --- */
+  .fam-members { display: flex; gap: 20px; flex-wrap: wrap; }
+  .fam-member { display: flex; align-items: center; gap: 10px; }
+  .fam-member img, .fam-avatar { width: 34px; height: 34px; border-radius: 50%; }
+  .fam-avatar { background: #334155; color: #cbd5e1; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  .fam-member .share { color: #64748b; font-size: 12px; }
+  .fam-invite-row { display: flex; gap: 10px; margin-top: 14px; align-items: center; }
+  #famInviteLink {
+    flex: 1; background: #0f172a; border: 1px solid #334155; color: #e2e8f0;
+    border-radius: 8px; padding: 8px 10px; font-size: 13px;
+  }
+
+  /* --- Калькулятор обмена --- */
+  .calc { margin-top: 0; }
+  .calc-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .calc input, .calc select {
+    background: #0f172a; border: 1px solid #334155; color: #e2e8f0;
+    border-radius: 8px; padding: 9px 12px; font-size: 15px;
+  }
+  .calc input:focus, .calc select:focus { outline: none; border-color: #2aabee; }
+  .calc input { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .calc input:disabled { opacity: .55; }
+  .calc-cell { display: flex; align-items: center; gap: 4px; }
+  .calc-lock {
+    background: none; border: none; color: #64748b; cursor: pointer;
+    font-size: 16px; padding: 3px 4px; border-radius: 6px; line-height: 1;
+  }
+  .calc-lock:hover { background: #334155; }
+  .calc-lock.on { background: #334155; }
+  .calc .calc-amt { width: 170px; }
+  .calc .calc-res { width: 170px; }
+  .calc .calc-swap { padding: 9px 12px; }
+  .calc-rate-row {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    margin-top: 12px; font-size: 13px; color: #94a3b8;
+  }
+  .calc .calc-rate, .calc .calc-rate2 { width: 170px; padding: 7px 10px; font-size: 14px; }
+  .calc-rate-row select { padding: 7px 10px; font-size: 14px; }
+  .calc .calc-reset { padding: 7px 12px; font-size: 13px; }
+  .calc .calc-total { color: #e2e8f0; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Индекс относительной недооцененности (RUI)</h1>
+  </header>
+
+  <div class="controls">
+    <span class="label">Раздел:</span>
+    <div class="group" id="tab">
+      <button data-v="fin" class="active">Финансы</button>
+      <button data-v="rui">COIN</button>
+      <button data-v="fiat">FIAT</button>
+      <button data-v="prof">Профиль</button>
+      <button data-v="admin" id="adminTabBtn" style="display:none">Админ</button>
+    </div>
+  </div>
+
+  <div id="tabRui" style="display:none">
+  <div class="controls">
+    <span class="label">Метрика:</span>
+    <div class="group" id="metric">
+      <button data-v="rui" class="active">RUI</button>
+      <button data-v="r">R (доходность)</button>
+      <button data-v="price">Цена</button>
+    </div>
+    <span class="label" id="winLabel">Окно:</span>
+    <div class="group" id="win">
+      <button data-v="24h">24ч</button>
+      <button data-v="7d">7д</button>
+      <button data-v="30d" class="active">30д</button>
+      <button data-v="365d">365д</button>
+    </div>
+    <span class="label">Диапазон:</span>
+    <div class="group" id="range">
+      <button data-v="1d">1 день</button>
+      <button data-v="7d" class="active">7 дней</button>
+      <button data-v="30d">30 дней</button>
+      <button data-v="180d">180 дней</button>
+      <button data-v="1y">1 год</button>
+      <button data-v="all">5 лет</button>
+    </div>
+  </div>
+
+  <div id="chart"></div>
+  <div id="meta"></div>
+
+  <h2 id="sumTitle">Сейчас</h2>
+  <table>
+    <thead><tr><th>Монета</th><th>Цена</th><th>R (за период)</th><th>RUI (за период)</th><th></th></tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <div id="calcCoin"></div>
+
+  <h2>AI-анализ периода <span id="aiPeriod" style="color:#64748b;font-weight:400"></span></h2>
+  <div class="ai-box">
+    <div class="row">
+      <button class="ai-btn" id="aiBtn">Собрать аналитику</button>
+      <span id="aiStatus" class="ai-status"></span>
+    </div>
+    <input id="aiExtra" class="ai-extra" maxlength="500" placeholder="Доп. указание для ИИ (необязательно): сравни с прошлым месяцем, подробнее про TON…">
+    <div id="aiOut" class="ai-out"></div>
+  </div>
+
+  <h2>Архив аналитики</h2>
+  <div id="aiHistory" class="ai-hist"></div>
+  </div><!-- /tabRui -->
+
+  <div id="tabFiat" style="display:none">
+    <div class="controls">
+      <span class="label">Метрика:</span>
+      <div class="group" id="fMetric">
+        <button data-v="rui" class="active">RUI</button>
+        <button data-v="r">R (доходность)</button>
+        <button data-v="fx">Курс</button>
+      </div>
+      <span class="label">Период:</span>
+      <div class="group" id="fRange">
+        <button data-v="7d">7 дней</button>
+        <button data-v="30d" class="active">30 дней</button>
+        <button data-v="180d">180 дней</button>
+        <button data-v="1y" style="display:none">1 год</button>
+      </div>
+    </div>
+
+    <div id="fiatChart"></div>
+    <div id="fiatMeta"></div>
+
+    <h2 id="fSumTitle">Сейчас</h2>
+    <table>
+      <thead><tr><th>Валюта</th><th>Курс, ед./$</th><th>R (за период)</th><th>RUI (за период)</th><th></th></tr></thead>
+      <tbody id="fiatTbody"></tbody>
+    </table>
+
+    <div id="calcFiat"></div>
+
+  <h2>AI-анализ периода <span id="fAiPeriod" style="color:#64748b;font-weight:400"></span></h2>
+  <div class="ai-box">
+    <div class="row">
+      <button class="ai-btn" id="fAiBtn">Собрать аналитику</button>
+      <span id="fAiStatus" class="ai-status"></span>
+    </div>
+    <input id="fAiExtra" class="ai-extra" maxlength="500" placeholder="Доп. указание для ИИ (необязательно): сравни с прошлым месяцем, подробнее про рубль…">
+    <div id="fAiOut" class="ai-out"></div>
+  </div>
+
+  <h2>Архив аналитики</h2>
+  <div id="fAiHistory" class="ai-hist"></div>
+  </div><!-- /tabFiat -->
+
+  <div id="tabProf" style="display:none">
+    <div class="ai-box prof-card">
+      <img id="avatar" class="prof-avatar" style="display:none" alt="">
+      <div class="prof-info">
+        <div id="who" class="prof-name"></div>
+        <div class="mark">Профиль · вход через Telegram-бота</div>
+      </div>
+      <button class="logout" id="logout">Выйти</button>
+    </div>
+
+    <div class="sec-head">
+      <h2>Семья</h2>
+    </div>
+    <div class="ai-box">
+      <div class="fam-members" id="famMembers"></div>
+      <div class="fam-invite-row">
+        <input id="famInviteName" placeholder="@username в Telegram">
+        <button class="mini-btn" id="famInviteBtn">Пригласить</button>
+      </div>
+      <div class="mark" id="famStatus" style="margin-top:8px"></div>
+      <div class="fam-invite-row" id="famInviteRow" style="display:none">
+        <input id="famInviteLink" readonly>
+        <button class="btn-ghost" id="famInviteCopy">Скопировать</button>
+      </div>
+    </div>
+  </div><!-- /tabProf -->
+
+  <div id="tabAdmin" style="display:none">
+    <div class="sec-head">
+      <h2>Пользователи</h2>
+      <span class="mark" id="adminMeta"></span>
+    </div>
+    <table>
+      <thead><tr><th>Пользователь</th><th>Регистрация</th><th>Активность</th><th>Счета</th><th>Операции</th><th>AI-токены</th><th></th></tr></thead>
+      <tbody id="adminTbody"></tbody>
+    </table>
+    <div class="mark" style="margin-top:8px">
+      AI-токены: входные ↑ и выходные ↓ по генерациям аналитики (кэшированные отчёты токенов не тратят).
+      Блокировка отключает бота и дашборд пользователю.
+    </div>
+  </div><!-- /tabAdmin -->
+
+  <div id="tabFin">
+    <div class="ai-box" id="finVerdict" style="font-size:15px"></div>
+    <div id="finChart" style="width:100%;height:460px;background:#1e293b;border-radius:12px;margin-top:14px"></div>
+    <div id="finMeta" style="color:#64748b;font-size:12px;margin-top:8px"></div>
+
+    <div class="sec-head">
+      <h2>Счета</h2>
+      <button class="mini-btn" id="finAddAccount">+ Счёт</button>
+    </div>
+    <table>
+      <thead><tr><th>Имя</th><th>Валюта</th><th>Баланс</th><th>≈ USD</th><th></th></tr></thead>
+      <tbody id="finAccounts"></tbody>
+    </table>
+
+    <div id="finSavingsBox" style="display:none">
+      <table style="margin-top:10px">
+        <thead><tr><th>Накопительный счёт</th><th>Валюта</th><th>Баланс</th><th>≈ USD</th><th></th></tr></thead>
+        <tbody id="finSavings"></tbody>
+      </table>
+    </div>
+
+    <div class="sec-head">
+      <h2>💼 Сделки</h2>
+      <button class="mini-btn" id="finAddDeal">+ Сделка</button>
+    </div>
+    <table>
+      <thead><tr><th>Монета</th><th>Кол-во</th><th>Потрачено</th><th>Вход</th><th>Сейчас</th><th>P&L</th><th>🔔 пороги</th><th></th></tr></thead>
+      <tbody id="finDeals"></tbody>
+    </table>
+    <div class="mark" style="margin-top:6px">
+      Купленная крипта живёт внутри сделки и входит в «Всего»; строки покупки/продажи видны в операциях
+      (график трат не портят). 🔔 — уведомление в Telegram при выходе за порог от цены входа, один раз на порог.
+    </div>
+
+    <div class="sec-head">
+      <h2>Последние операции</h2>
+      <div style="display:flex;gap:10px">
+        <button class="mini-btn" id="finAddTransfer">⇄ Перевод</button>
+        <button class="mini-btn" id="finAddTx">+ Операция</button>
+      </div>
+    </div>
+    <div id="spendChart" style="width:100%;height:190px;background:#1e293b;border-radius:12px;margin-bottom:10px"></div>
+    <table id="finTxTable">
+      <thead><tr><th>Дата</th><th>Счёт</th><th class="who">Кто</th><th>Сумма</th><th>≈ USD</th><th>Описание</th><th></th></tr></thead>
+      <tbody id="finTx"></tbody>
+    </table>
+    <div class="pager" id="finTxPager" style="display:none">
+      <button class="mini-btn" id="finTxPrev">← Назад</button>
+      <span id="finTxPagerInfo"></span>
+      <button class="mini-btn" id="finTxNext">Вперёд →</button>
+    </div>
+  </div>
+
+  <template id="calcTpl">
+    <div class="calc-wrap">
+      <h2>Калькулятор обмена</h2>
+      <div class="ai-box calc">
+        <div class="calc-row">
+          <div class="calc-cell">
+            <input class="calc-amt" type="number" step="any" min="0" value="100">
+            <button type="button" class="calc-lock" data-lock="amt" title="Зафиксировать сумму: правка второй суммы пересчитает курс">🔓</button>
+          </div>
+          <select class="calc-from"></select>
+          <button type="button" class="mini-btn calc-swap" title="Поменять валюты местами">⇄</button>
+          <div class="calc-cell">
+            <input class="calc-res" type="number" step="any" min="0">
+            <button type="button" class="calc-lock" data-lock="res" title="Зафиксировать сумму: правка второй суммы пересчитает курс">🔓</button>
+          </div>
+          <select class="calc-to"></select>
+        </div>
+        <div class="calc-rate-row">
+          <span>Через:</span>
+          <select class="calc-via" title="Промежуточная валюта обмена"></select>
+          <span>Курс: 1 <b class="calc-from-name"></b> =</span>
+          <input class="calc-rate" type="number" step="any" min="0">
+          <span><b class="calc-mid-name"></b></span>
+        </div>
+        <div class="calc-rate-row calc-leg2" style="display:none">
+          <span>1 <b class="calc-via-name"></b> =</span>
+          <input class="calc-rate2" type="number" step="any" min="0">
+          <span><b class="calc-to-name"></b></span>
+        </div>
+        <div class="calc-rate-row">
+          <span class="calc-total"></span>
+          <button type="button" class="btn-ghost calc-reset" title="Вернуть рыночные курсы">↺ Рыночный</button>
+          <span class="calc-hint mark"></span>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <div id="finModal">
+    <form class="fin-card" id="finForm">
+      <h3 id="finTitle"></h3>
+      <div id="fsAccount">
+        <label>Имя</label>
+        <input id="fAccName" maxlength="50" required>
+        <div id="fAccCurrencyRow">
+          <label>Валюта</label>
+          <select id="fAccCurrency"></select>
+        </div>
+        <label id="fAccBalanceLabel">Баланс</label>
+        <input id="fAccBalance" type="number" step="any" min="0" value="0">
+        <label style="display:flex;align-items:center;gap:8px;margin-top:14px;cursor:pointer">
+          <input type="checkbox" id="fAccSavings" style="width:auto"> 🐷 Накопительный счёт (сбережения)
+        </label>
+      </div>
+      <div id="fsTx">
+        <label>Счёт</label>
+        <select id="fTxAccount"></select>
+        <div class="pair">
+          <div>
+            <label>Тип</label>
+            <select id="fTxKind">
+              <option value="expense">Трата −</option>
+              <option value="income">Поступление +</option>
+            </select>
+          </div>
+          <div>
+            <label>Сумма</label>
+            <input id="fTxAmount" type="number" step="any" min="0" required>
+          </div>
+        </div>
+        <label>Валюта суммы</label>
+        <select id="fTxCurrency"></select>
+        <label>Описание</label>
+        <input id="fTxDesc" maxlength="200" placeholder="кофе, зарплата…">
+        <label style="display:flex;align-items:center;gap:8px;margin-top:14px;cursor:pointer">
+          <input type="checkbox" id="fTxExcluded" style="width:auto"> Не учитывать в графике трат
+        </label>
+      </div>
+      <div id="fsTransfer">
+        <div class="pair">
+          <div>
+            <label>Откуда (списание)</label>
+            <select id="fTransferFrom"></select>
+          </div>
+          <div>
+            <label>Куда (зачисление)</label>
+            <select id="fTransferTo"></select>
+          </div>
+        </div>
+        <div class="pair">
+          <div>
+            <label>Сумма</label>
+            <input id="fTransferAmount" type="number" step="any" min="0" required>
+          </div>
+          <div>
+            <label>Валюта суммы</label>
+            <select id="fTransferCurrency"></select>
+          </div>
+        </div>
+        <div class="pair">
+          <div>
+            <label>Зачислено (факт)</label>
+            <input id="fTransferToAmount" type="number" step="any" min="0" placeholder="по рыночному курсу">
+          </div>
+          <div>
+            <label>Валюта зачисления</label>
+            <input id="fTransferToCurrency" disabled>
+          </div>
+        </div>
+        <div class="mark" id="fTransferHint" style="margin-top:4px"></div>
+        <label>Описание</label>
+        <input id="fTransferDesc" maxlength="200" placeholder="перевод жене…">
+      </div>
+      <div id="fsDeal">
+        <label>Счёт списания</label>
+        <select id="fDealAccount"></select>
+        <div class="pair">
+          <div>
+            <label>Потрачено</label>
+            <input id="fDealAmount" type="number" step="any" min="0" required>
+          </div>
+          <div>
+            <label>Валюта счёта</label>
+            <input id="fDealCurrency" disabled>
+          </div>
+        </div>
+        <div class="pair">
+          <div>
+            <label>Криптовалюта</label>
+            <select id="fDealSymbol"></select>
+          </div>
+          <div>
+            <label>Получено (кол-во)</label>
+            <input id="fDealQty" type="number" step="any" min="0" required>
+          </div>
+        </div>
+        <div class="mark" id="fDealHint" style="margin-top:4px"></div>
+        <label>Уведомить при росте ≥ +N% (пусто — выключено)</label>
+        <input id="fDealAlertUp" type="number" step="any" min="0" placeholder="напр. 5">
+        <label>Уведомить при падении ≤ −N% (пусто — выключено)</label>
+        <input id="fDealAlertDown" type="number" step="any" min="0" placeholder="напр. 5">
+        <label>Заметка</label>
+        <input id="fDealNote" maxlength="200" placeholder="купил на просадке…">
+      </div>
+      <div id="fsDealClose">
+        <div class="mark" id="fCloseInfo" style="margin:4px 0"></div>
+        <label>Счёт зачисления</label>
+        <select id="fCloseAccount"></select>
+        <div class="pair">
+          <div>
+            <label>Получено (факт)</label>
+            <input id="fCloseAmount" type="number" step="any" min="0" placeholder="по рыночному курсу">
+          </div>
+          <div>
+            <label>Валюта счёта</label>
+            <input id="fCloseCurrency" disabled>
+          </div>
+        </div>
+        <div class="mark" id="fCloseHint" style="margin-top:4px"></div>
+      </div>
+      <div id="fsDealAlerts">
+        <div class="mark" id="fAlertInfo" style="margin:4px 0"></div>
+        <label>Уведомить при росте ≥ +N% (пусто — выключено)</label>
+        <input id="fAlertUp" type="number" step="any" min="0">
+        <label>Уведомить при падении ≤ −N% (пусто — выключено)</label>
+        <input id="fAlertDown" type="number" step="any" min="0">
+        <label>Заметка</label>
+        <input id="fAlertNote" maxlength="200">
+      </div>
+      <div id="finErr"></div>
+      <div class="actions">
+        <button type="button" class="btn-ghost" id="finCancel">Отмена</button>
+        <button type="submit" class="mini-btn" id="finSave">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const PALETTE = ['#f87171', '#fbbf24', '#4ade80', '#22d3ee', '#818cf8', '#f472b6', '#a3e635'];
+// Цвет жёстко привязан к монете — не зависит от порядка серий в ответе API
+const SYMBOLS = ['TRX', 'BNB', 'TON', 'BTC', 'ETH', 'LTC'];
+const colorOf = (s) => PALETTE[SYMBOLS.indexOf(s) % PALETTE.length] ?? '#94a3b8';
+const bySymbolOrder = (a, b) => SYMBOLS.indexOf(a.symbol) - SYMBOLS.indexOf(b.symbol);
+const state = { metric: 'rui', win: '30d', range: '7d' };
+const chart = echarts.init(document.getElementById('chart'));
+
+// --- Вкладка «Финансы» ---
+const finChart = echarts.init(document.getElementById('finChart'));
+const spendChart = echarts.init(document.getElementById('spendChart'));
+const fiatChart = echarts.init(document.getElementById('fiatChart'));
+let activeTab = 'fin';
+let ruiLoaded = false; // COIN-график грузится лениво — вкладка не основная
+let fiatLoaded = false; // и FIAT тоже
+
+const fmtNum = (v) => v.toLocaleString('en-US', { maximumFractionDigits: 8 });
+const fmtUsd2 = (v) =>
+  v == null ? '—'
+  : (v < 0 ? '−$' : '$') + Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: Math.abs(v) >= 1000 ? 0 : 2 });
+const finDelta = (d) =>
+  d == null ? '<span class="mark">—</span>'
+  : `<span class="${d.usd >= 0 ? 'pos' : 'neg'}">${fmtUsd2(d.usd)} (${d.pct >= 0 ? '+' : ''}${d.pct.toFixed(1)}%)</span>`;
+// цена входа/текущая по сделке — точнее, чем fmtPrice (важны 4 значащие цифры)
+const fmtP = (v) => (v == null ? '—' : '$' + Number(v.toPrecision(4)));
+
+let finData = null; // последний ответ /api/finance — для формы правки
+let myId = null; // id текущего пользователя — «свои» счета для ☆
+let txPage = 0; // текущая страница «Последних операций»
+
+async function loadFinance() {
+  const d = await api(`/api/finance?txPage=${txPage}`);
+  finData = d;
+  // сводка тремя срезами: всего / текущие / накопления
+  const vSpan = (p) => {
+    const t = p.d7 ?? p.d30;
+    return ` · <span class="${!t || t.usd >= 0 ? 'pos' : 'neg'}">${p.verdict}</span>`;
+  };
+  const row = (icon, label, p, verdict) =>
+    `<div style="margin-top:6px">${icon} ${label}: <b>${fmtPrice(p.usd)}</b> · 7д ${finDelta(p.d7)} · 30д ${finDelta(p.d30)}${verdict ? vSpan(p) : ''}</div>`;
+  const dealsLine =
+    d.deals?.costUsd > 0
+      ? `<div style="margin-top:6px">💼 Сделки: <b>${fmtPrice(d.deals.usd)}</b> · к покупке ` +
+        `<span class="${(d.deals.pnlUsd ?? 0) >= 0 ? 'pos' : 'neg'}">${fmtPrice(d.deals.pnlUsd)} ` +
+        `(${d.deals.pnlPct == null ? '—' : (d.deals.pnlPct >= 0 ? '+' : '') + d.deals.pnlPct.toFixed(1) + '%'})</span></div>`
+      : '';
+  document.getElementById('finVerdict').innerHTML =
+    `<div style="margin-top:0">💰 Всего: <b>${fmtPrice(d.total.usd)}</b> · 7д ${finDelta(d.total.d7)} · 30д ${finDelta(d.total.d30)}${vSpan(d.total)}</div>` +
+    row('💸', 'Текущие', d.current, false) +
+    (d.accounts.some((a) => a.isSavings) ? row('🐷', 'Накопления', d.savings, true) : '') +
+    dealsLine;
+
+  const trend = d.total.d7 ?? d.total.d30; // цвет линии графика
+  finChart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#0f172a',
+      borderColor: '#334155',
+      textStyle: { color: '#e2e8f0', fontSize: 12 },
+      valueFormatter: (v) => fmtPrice(v),
+    },
+    grid: { left: 64, right: 20, top: 40, bottom: 56 },
+    legend: { textStyle: { color: '#94a3b8', fontSize: 12 }, top: 4 },
+    xAxis: {
+      type: 'time',
+      axisLine: { lineStyle: { color: '#334155' } },
+      axisLabel: { color: '#94a3b8', hideOverlap: true },
+    },
+    yAxis: {
+      type: 'value',
+      scale: true,
+      axisLabel: { color: '#94a3b8', formatter: (v) => fmtPrice(v) },
+      splitLine: { lineStyle: { color: '#233047' } },
+    },
+    dataZoom: [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 12, borderColor: '#334155', textStyle: { color: '#64748b' } }],
+    series: [
+      {
+        name: 'Богатство',
+        type: 'line',
+        showSymbol: false,
+        smooth: false,
+        lineStyle: { width: 2 },
+        areaStyle: { opacity: 0.12 },
+        color: !trend || trend.usd >= 0 ? '#4ade80' : '#f87171',
+        data: d.ts.map((t, i) => [t, d.wealth[i]]),
+      },
+      {
+        // среднее за 7 точек — сглаженный тренд (доходы минус расходы без рыночного шума)
+        name: 'Средняя 7д',
+        type: 'line',
+        showSymbol: false,
+        smooth: true,
+        lineStyle: { width: 1.5, type: 'dashed' },
+        color: '#fbbf24',
+        data: d.ts.map((t, i) => {
+          if (i < 6) return [t, null];
+          let sum = 0;
+          for (let j = i - 6; j <= i; j++) sum += d.wealth[j];
+          return [t, sum / 7];
+        }),
+      },
+    ],
+  }, { notMerge: true });
+  document.getElementById('finMeta').textContent =
+    `${d.ts.length} ${d.ts.length % 10 === 1 && d.ts.length % 100 !== 11 ? 'точка' : 'точек'} · обновлено ${new Date().toLocaleTimeString('ru-RU')}`;
+
+  const renderAccountsRows = (accounts, withDefault) =>
+    accounts.map((a) => {
+      const foreign = a.ownerId != null && a.ownerId !== myId;
+      const star = withDefault
+        ? a.isDefault
+          ? '⭐ основной '
+          : foreign ? '' : `<button class="row-btn" data-act="acc-def" data-id="${a.id}" title="Сделать основным">☆</button>`
+        : '';
+      return `<tr><td><b>${a.name}</b>${foreign && a.ownerName ? ` <span class="mark">· ${a.ownerName}</span>` : ''}</td><td>${a.currency}</td>` +
+        `<td class="num">${fmtNum(a.balance)}</td>` +
+        `<td class="num">${fmtPrice(a.usd)}</td>` +
+        `<td>${star}` +
+        `<button class="row-btn" data-act="acc-edit" data-id="${a.id}" title="Править">✎</button>` +
+        `<button class="row-btn del" data-act="acc-del" data-id="${a.id}" data-name="${a.name}" title="Удалить счёт">✕</button></td></tr>`;
+    }).join('');
+
+  // Семья: участники + доля богатства каждого (сумма его счетов)
+  const shareUsd = new Map();
+  for (const a of d.accounts) {
+    if (a.usd != null) shareUsd.set(a.ownerId, (shareUsd.get(a.ownerId) ?? 0) + a.usd);
+  }
+  document.getElementById('famMembers').innerHTML =
+    d.members?.length > 1
+      ? d.members
+          .map((m) => {
+            const avatar = m.photoUrl
+              ? `<img src="${m.photoUrl}" alt="">`
+              : `<div class="fam-avatar">${(m.name || '?').slice(0, 1)}</div>`;
+            return `<div class="fam-member">${avatar}<div><div>${m.name}</div><div class="share">${fmtPrice(shareUsd.get(m.id) ?? 0)}</div></div></div>`;
+          })
+          .join('')
+      : '<span style="color:#64748b;font-size:13px">Пока только вы — пригласите близких, и счета, траты и график станут общими.</span>';
+
+  const current = d.accounts.filter((a) => !a.isSavings);
+  const savings = d.accounts.filter((a) => a.isSavings);
+  document.getElementById('finAccounts').innerHTML = current.length
+    ? renderAccountsRows(current, true)
+    : '<tr><td colspan="5" style="color:#64748b">Счетов нет — создайте кнопкой «+ Счёт» или через бота: /finance add Наличные thb 3000</td></tr>';
+
+  document.getElementById('finSavingsBox').style.display = savings.length ? '' : 'none';
+  if (savings.length) {
+    document.getElementById('finSavings').innerHTML = renderAccountsRows(savings, false);
+  }
+
+  // Сделки-позиции: открытые сверху, закрытые приглушёнными внизу
+  const dealRows = (d.deals?.list ?? []).map((x) => {
+    const closed = x.status === 'closed';
+    const pct = x.pnlPct == null ? '—' : (x.pnlPct >= 0 ? '+' : '') + x.pnlPct.toFixed(1) + '%';
+    const alerts =
+      [x.alertUp != null ? `+${x.alertUp}%` : null, x.alertDown != null ? `−${x.alertDown}%` : null].filter(Boolean).join(' / ') || '—';
+    const now = closed
+      ? x.proceedsAmount != null ? `${fmtNum(x.proceedsAmount)} ${x.proceedsCurrency}` : '—'
+      : fmtP(x.price);
+    const actions = closed
+      ? `<button class="row-btn del" data-act="deal-del" data-id="${x.id}" title="Удалить сделку (отменит обе строки)">✕</button>`
+      : `<button class="row-btn" data-act="deal-alerts" data-id="${x.id}" title="Пороги уведомлений и заметка">✎</button>` +
+        `<button class="row-btn" data-act="deal-close" data-id="${x.id}" title="Закрыть сделку (продать, зачислить на счёт)">⤓</button>` +
+        `<button class="row-btn del" data-act="deal-del" data-id="${x.id}" title="Удалить сделку (списание вернётся на счёт)">✕</button>`;
+    return `<tr${closed ? ' style="opacity:.55"' : ''}>` +
+      `<td><b>${x.symbol}</b>${x.note ? ` <span class="mark" title="${x.note}">✍️</span>` : ''}${closed ? ' <span class="mark">закрыта</span>' : ''}</td>` +
+      `<td class="num">${fmtNum(x.qty)}</td>` +
+      `<td class="num">${fmtNum(x.spentAmount)} ${x.spentCurrency}</td>` +
+      `<td class="num">${fmtP(x.buyPriceUsd)}</td>` +
+      `<td class="num">${now}</td>` +
+      `<td class="num ${(x.pnlUsd ?? 0) >= 0 ? 'pos' : 'neg'}">${pct}${x.pnlUsd != null ? ` · ${fmtPrice(x.pnlUsd)}` : ''}</td>` +
+      `<td>${alerts}</td>` +
+      `<td>${actions}</td></tr>`;
+  });
+  document.getElementById('finDeals').innerHTML = dealRows.length
+    ? dealRows.join('')
+    : '<tr><td colspan="8" style="color:#64748b">Сделок нет — «+ Сделка»: спишите рубли (или другую валюту) со счёта, купленная крипта будет расти/падать вместе с ценой</td></tr>';
+
+  document.getElementById('finTxTable').classList.toggle('hide-who', !(d.members?.length > 1));
+  txPage = d.txPage ?? txPage; // сервер клэмпит (напр., после удаления хвостовой страницы)
+
+  // группировка по дням: перед первой операцией дня — строка-заголовок
+  const opForms = (n) => {
+    const a = n % 100, b = a % 10;
+    return a > 10 && a < 20 || b === 0 || b > 4 ? 'операций' : b === 1 ? 'операция' : 'операции';
+  };
+  const dayLabel = (ts) => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((today - ts) / 86400000);
+    if (diffDays === 0) return 'Сегодня';
+    if (diffDays === 1) return 'Вчера';
+    const d2 = new Date(ts);
+    return `${d2.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })} · ${d2.toLocaleDateString('ru-RU', { weekday: 'short' })}`;
+  };
+  const dayCount = new Map();
+  for (const t of d.transactions) {
+    const k = new Date(t.createdAt).setHours(0, 0, 0, 0);
+    dayCount.set(k, (dayCount.get(k) ?? 0) + 1);
+  }
+  const rows = [];
+  let lastDayKey = null;
+  for (const t of d.transactions) {
+    const dayKey = new Date(t.createdAt).setHours(0, 0, 0, 0);
+    if (dayKey !== lastDayKey) {
+      lastDayKey = dayKey;
+      const n = dayCount.get(dayKey);
+      rows.push(`<tr class="tx-day"><td colspan="7">${dayLabel(dayKey)} · ${n} ${opForms(n)}</td></tr>`);
+    }
+    const isTransfer = t.kind === 'transfer_out' || t.kind === 'transfer_in';
+    const isDeal = Boolean(t.dealId); // строки сделки управляются в разделе «Сделки»
+    const pos = t.kind === 'income' || t.kind === 'transfer_in';
+    // у перевода показываем факт по счёту (accountAmount), а не введённую сумму
+    const amt = isTransfer ? `${fmtNum(t.accountAmount)} ${t.accountCurrency}` : `${fmtNum(t.amount)} ${t.currency}`;
+    // дата дня — в заголовке группы, в строке остаётся время
+    rows.push(`<tr><td class="num">${new Date(t.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</td>` +
+      `<td>${t.accountName}</td>` +
+      `<td class="who">${t.authorName ?? ''}</td>` +
+      `<td class="num ${pos ? 'pos' : 'neg'}">${isTransfer ? '⇄ ' : ''}${isDeal ? '💼 ' : ''}${pos ? '+' : '−'}${amt}</td>` +
+      `<td class="num">${fmtPrice(t.usd)}</td>` +
+      `<td>${t.excluded ? '<span class="mark" title="Не учитывается в графике трат">не в графике · </span>' : ''}${t.description ?? ''}</td>` +
+      `<td>${isTransfer || isDeal ? '' : `<button class="row-btn" data-act="tx-edit" data-id="${t.id}" title="Править">✎</button>`}` +
+      `${isTransfer || isDeal ? `<span class="mark" title="Управление — в разделе «Сделки»">💼</span>` : `<button class="row-btn del" data-act="tx-del" data-id="${t.id}" title="${isTransfer ? 'Удалить перевод (оба счёта)' : 'Удалить операцию'}">✕</button>`}</td></tr>`);
+  }
+  document.getElementById('finTx').innerHTML = rows.length
+    ? rows.join('')
+    : '<tr><td colspan="7" style="color:#64748b">Операций ещё нет — добавьте кнопкой «+ Операция» или отправьте боту: 150 кофе</td></tr>';
+
+  // пагинация «Последних операций»
+  const pages = d.txPages ?? 1;
+  document.getElementById('finTxPager').style.display = pages > 1 ? '' : 'none';
+  if (pages > 1) {
+    document.getElementById('finTxPagerInfo').textContent = `Стр. ${txPage + 1} из ${pages} · всего ${d.txTotal}`;
+    document.getElementById('finTxPrev').disabled = txPage <= 0;
+    document.getElementById('finTxNext').disabled = txPage >= pages - 1;
+  }
+  loadSpending().catch(console.error);
+}
+
+document.getElementById('finTxPrev').addEventListener('click', () => {
+  if (txPage > 0) { txPage--; loadFinance().catch(console.error); }
+});
+document.getElementById('finTxNext').addEventListener('click', () => {
+  txPage++; loadFinance().catch(console.error); // сервер клэмпит выход за диапазон
+});
+
+// Мини-график трат: бары по дням (USD на момент ввода) + плавающая средняя 7д
+async function loadSpending() {
+  const d = await api('/api/finance/spending?days=30');
+  const ma = d.sum.map((_, i) => {
+    if (i < 6) return null;
+    let s = 0;
+    for (let j = i - 6; j <= i; j++) s += d.sum[j];
+    return s / 7;
+  });
+  spendChart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#0f172a',
+      borderColor: '#334155',
+      textStyle: { color: '#e2e8f0', fontSize: 12 },
+      valueFormatter: (v) => fmtPrice(v),
+    },
+    legend: { textStyle: { color: '#94a3b8', fontSize: 12 }, top: 2 },
+    grid: { left: 56, right: 20, top: 30, bottom: 24 },
+    xAxis: {
+      type: 'time',
+      axisLine: { lineStyle: { color: '#334155' } },
+      axisLabel: { color: '#94a3b8', hideOverlap: true },
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: '#94a3b8', formatter: (v) => fmtPrice(v) },
+      splitLine: { lineStyle: { color: '#233047' } },
+    },
+    series: [
+      {
+        name: 'Траты за день',
+        type: 'bar',
+        color: '#f87171',
+        barMaxWidth: 14,
+        itemStyle: { borderRadius: [3, 3, 0, 0] },
+        data: d.ts.map((t, i) => [t, d.sum[i]]),
+      },
+      {
+        name: 'Средняя 7д',
+        type: 'line',
+        showSymbol: false,
+        smooth: true,
+        lineStyle: { width: 1.5, type: 'dashed' },
+        color: '#fbbf24',
+        data: d.ts.map((t, i) => [t, ma[i]]),
+      },
+    ],
+  }, { notMerge: true });
+}
+
+const TAB_SECTIONS = { rui: 'tabRui', fin: 'tabFin', fiat: 'tabFiat', prof: 'tabProf', admin: 'tabAdmin' };
+document.getElementById('tab').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  activeTab = btn.dataset.v;
+  setActive('tab', activeTab);
+  for (const [v, id] of Object.entries(TAB_SECTIONS)) {
+    document.getElementById(id).style.display = activeTab === v ? '' : 'none';
+  }
+  if (activeTab === 'fin') {
+    loadFinance().catch(console.error);
+    finChart.resize();
+    spendChart.resize();
+  } else if (activeTab === 'rui') {
+    chart.resize();
+    coinCalc.init().catch(console.error);
+    if (!ruiLoaded) {
+      ruiLoaded = true;
+      loadChart().catch(console.error);
+      loadSummary().catch(console.error);
+    }
+  } else if (activeTab === 'fiat') {
+    fiatChart.resize();
+    fiatCalc.init().catch(console.error);
+    if (!fiatLoaded) {
+      fiatLoaded = true;
+      loadFiatChart().catch(console.error);
+      loadFiatSummary().catch(console.error);
+      fiatAi.loadHistory().catch(console.error);
+    }
+  } else if (activeTab === 'prof') {
+    // Профиль: семья рендерится из loadFinance — обновляем данные
+    loadFinance().catch(console.error);
+  } else if (activeTab === 'admin') {
+    loadAdmin().catch(console.error);
+  }
+});
+
+// --- Редактор финансов (модалка) ---
+const CURRENCIES = ['USD', 'RUB', 'THB', 'TRX', 'BNB', 'TON', 'BTC', 'ETH', 'LTC'];
+const finModal = document.getElementById('finModal');
+const $ = (id) => document.getElementById(id);
+let modalMode = null; // { type: 'account'|'tx', id: null|id }
+
+for (const sel of [$('fAccCurrency'), $('fTxCurrency'), $('fTransferCurrency')]) {
+  sel.innerHTML = CURRENCIES.map((c) => `<option>${c}</option>`).join('');
+}
+
+function openModal(mode) {
+  modalMode = mode;
+  $('finErr').textContent = '';
+  const isAcc = mode.type === 'account';
+  const isTx = mode.type === 'tx';
+  const isDeal = mode.type === 'deal';
+  const isDealClose = mode.type === 'dealClose';
+  const isDealAlerts = mode.type === 'dealAlerts';
+  $('fsAccount').style.display = isAcc ? '' : 'none';
+  $('fsTx').style.display = isTx ? '' : 'none';
+  $('fsTransfer').style.display = mode.type === 'transfer' ? '' : 'none';
+  $('fsDeal').style.display = isDeal ? '' : 'none';
+  $('fsDealClose').style.display = isDealClose ? '' : 'none';
+  $('fsDealAlerts').style.display = isDealAlerts ? '' : 'none';
+  // required-поля скрытой формы должны выйти из валидации, иначе сабмит молча блокируется
+  $('fAccName').disabled = !isAcc;
+  $('fTxAmount').disabled = !isTx;
+  $('fTransferAmount').disabled = mode.type !== 'transfer';
+  $('fDealAmount').disabled = !isDeal;
+  $('fDealQty').disabled = !isDeal;
+  $('fAccBalanceLabel').textContent = mode.id ? 'Баланс' : 'Стартовая сумма';
+
+  // вариант с чужим счётом помечаем владельцем
+  const accountOption = (a) => {
+    const foreign = a.ownerId != null && a.ownerId !== myId;
+    return `<option value="${a.id}">${a.name}${foreign && a.ownerName ? ` (${a.ownerName})` : ''} · ${a.currency}</option>`;
+  };
+  const ownDefault = finData.accounts.find((a) => a.isDefault && a.ownerId === myId) ?? finData.accounts[0];
+
+  if (isAcc) {
+    $('finTitle').textContent = mode.id ? 'Правка счёта' : 'Новый счёт';
+    const a = mode.id ? finData.accounts.find((x) => x.id === mode.id) : null;
+    modalMode.lastCurrency = a?.currency ?? 'USD';
+    $('fAccName').value = a?.name ?? '';
+    $('fAccCurrency').value = a?.currency ?? 'USD';
+    $('fAccBalance').value = a ? a.balance : 0;
+    $('fAccSavings').checked = a?.isSavings ?? false;
+  } else if (isTx) {
+    $('finTitle').textContent = mode.id ? 'Правка операции' : 'Новая операция';
+    const t = mode.id ? finData.transactions.find((x) => x.id === mode.id) : null;
+    $('fTxAccount').innerHTML = finData.accounts
+      .map((a) => {
+        const sel = t ? t.accountId === a.id : a.isDefault;
+        return `<option value="${a.id}"${sel ? ' selected' : ''}>${a.name} · ${a.currency}</option>`;
+      })
+      .join('');
+    $('fTxKind').value = t?.kind ?? 'expense';
+    $('fTxAmount').value = t?.amount ?? '';
+    const acc = finData.accounts.find((x) => x.id === $('fTxAccount').value);
+    $('fTxCurrency').value = t?.currency ?? acc?.currency ?? 'USD';
+    $('fTxDesc').value = t?.description ?? '';
+    $('fTxExcluded').checked = t?.excluded ?? false;
+  } else if (mode.type === 'transfer') {
+    $('finTitle').textContent = 'Перевод между счетами';
+    const accounts = finData.accounts;
+    $('fTransferFrom').innerHTML = accounts.map(accountOption).join('');
+    if (ownDefault) $('fTransferFrom').value = ownDefault.id;
+    $('fTransferTo').innerHTML = accounts.map(accountOption).join('');
+    const other = accounts.find((a) => a.id !== $('fTransferFrom').value);
+    if (other) $('fTransferTo').value = other.id;
+    $('fTransferAmount').value = '';
+    $('fTransferCurrency').value = ownDefault?.currency ?? 'USD';
+    $('fTransferDesc').value = '';
+    $('fTransferToAmount').value = '';
+    transferHint();
+  } else if (isDeal) {
+    $('finTitle').textContent = 'Новая сделка';
+    $('fDealAccount').innerHTML = finData.accounts.map(accountOption).join('');
+    if (ownDefault) $('fDealAccount').value = ownDefault.id;
+    $('fDealAmount').value = '';
+    $('fDealCurrency').value = ownDefault?.currency ?? 'USD';
+    $('fDealSymbol').innerHTML = SYMBOLS.map((s) => `<option>${s}</option>`).join('');
+    $('fDealQty').value = '';
+    $('fDealAlertUp').value = '5';
+    $('fDealAlertDown').value = '5';
+    $('fDealNote').value = '';
+    dealHint();
+  } else if (isDealClose) {
+    $('finTitle').textContent = 'Закрыть сделку';
+    const x = (finData.deals?.list ?? []).find((d) => d.id === mode.id);
+    modalMode.deal = x ?? null;
+    if (!x) return closeModal();
+    $('fCloseInfo').innerHTML =
+      `<b>${x.symbol}</b> · ${fmtNum(x.qty)} · вход ${fmtP(x.buyPriceUsd)} · сейчас ` +
+      `<span class="${(x.pnlUsd ?? 0) >= 0 ? 'pos' : 'neg'}">${x.pnlPct == null ? '—' : (x.pnlPct >= 0 ? '+' : '') + x.pnlPct.toFixed(1) + '%'}</span>`;
+    $('fCloseAccount').innerHTML = finData.accounts.map(accountOption).join('');
+    if (ownDefault) $('fCloseAccount').value = ownDefault.id;
+    $('fCloseAmount').value = '';
+    closeHint();
+  } else if (isDealAlerts) {
+    $('finTitle').textContent = 'Уведомления по сделке';
+    const x = (finData.deals?.list ?? []).find((d) => d.id === mode.id);
+    modalMode.deal = x ?? null;
+    if (!x) return closeModal();
+    $('fAlertInfo').innerHTML =
+      `<b>${x.symbol}</b> · вход ${fmtP(x.buyPriceUsd)} · сейчас ` +
+      `<span class="${(x.pnlUsd ?? 0) >= 0 ? 'pos' : 'neg'}">${x.pnlPct == null ? '—' : (x.pnlPct >= 0 ? '+' : '') + x.pnlPct.toFixed(1) + '%'}</span>`;
+    $('fAlertUp').value = x.alertUp ?? '';
+    $('fAlertDown').value = x.alertDown ?? '';
+    $('fAlertNote').value = x.note ?? '';
+  }
+  finModal.classList.add('open');
+}
+
+function closeModal() {
+  finModal.classList.remove('open');
+  modalMode = null;
+}
+
+$('finCancel').addEventListener('click', closeModal);
+finModal.addEventListener('click', (e) => { if (e.target === finModal) closeModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && finModal.classList.contains('open')) closeModal(); });
+
+// при создании валюта суммы следует за выбранным счётом
+$('fTxAccount').addEventListener('change', () => {
+  if (modalMode?.id) return;
+  const a = finData.accounts.find((x) => x.id === $('fTxAccount').value);
+  if (a) $('fTxCurrency').value = a.currency;
+});
+
+// валюта перевода следует за счётом списания
+$('fTransferFrom').addEventListener('change', () => {
+  const a = finData.accounts.find((x) => x.id === $('fTransferFrom').value);
+  if (a) $('fTransferCurrency').value = a.currency;
+});
+
+// хинт фактического зачисления: рыночный кросс по rates из /api/finance + отклонение факта
+// (rates — USD за единицу; рынок = amount × rate(сумма) / rate(куда), как в applyTransfer)
+const transferHint = () => {
+  if (!finData) return;
+  const toAcc = finData.accounts.find((x) => x.id === $('fTransferTo').value);
+  $('fTransferToCurrency').value = toAcc?.currency ?? '';
+  const hint = $('fTransferHint');
+  const rCur = finData.rates?.[$('fTransferCurrency').value];
+  const rTo = toAcc ? finData.rates?.[toAcc.currency] : null;
+  const amount = Number($('fTransferAmount').value);
+  const fact = Number($('fTransferToAmount').value);
+  if (!toAcc || !(amount > 0) || !(rCur > 0) || !(rTo > 0)) { hint.textContent = ''; return; }
+  const market = (amount * rCur) / rTo;
+  const show = (v) => fmtNum(Number(v.toPrecision(8)));
+  if (!(fact > 0)) {
+    hint.textContent = `Пусто — зачислим по рынку: ≈ ${show(market)} ${toAcc.currency}`;
+    return;
+  }
+  const pct = (fact / market - 1) * 100;
+  hint.innerHTML = `Рынок: ≈ ${show(market)} ${toAcc.currency} · факт <span class="${pct >= 0 ? 'pos' : 'neg'}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</span> к рынку`;
+};
+$('fTransferTo').addEventListener('change', transferHint);
+$('fTransferCurrency').addEventListener('change', transferHint);
+$('fTransferAmount').addEventListener('input', transferHint);
+$('fTransferToAmount').addEventListener('input', transferHint);
+
+// хинт новой сделки: расчётная цена входа против рыночной (rates — USD за единицу)
+const dealHint = () => {
+  if (!finData) return;
+  const acc = finData.accounts.find((x) => x.id === $('fDealAccount').value);
+  $('fDealCurrency').value = acc?.currency ?? '';
+  const amount = Number($('fDealAmount').value);
+  const qty = Number($('fDealQty').value);
+  const rCur = acc ? finData.rates?.[acc.currency] : null;
+  const rSym = finData.rates?.[$('fDealSymbol').value];
+  if (!acc || !(amount > 0) || !(qty > 0) || !(rCur > 0)) {
+    $('fDealHint').textContent = '';
+    return;
+  }
+  const entry = (amount * rCur) / qty; // USD за монету
+  if (!(rSym > 0)) {
+    $('fDealHint').textContent = `Цена входа: ${fmtP(entry)}`;
+    return;
+  }
+  const pct = (entry / rSym - 1) * 100;
+  $('fDealHint').innerHTML =
+    `Цена входа: ${fmtP(entry)} · рынок ${fmtP(rSym)} · ` +
+    `<span class="${pct <= 0 ? 'pos' : 'neg'}" title="ниже рынка = купили дешевле">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</span> к рынку`;
+};
+$('fDealAccount').addEventListener('change', dealHint);
+$('fDealSymbol').addEventListener('change', dealHint);
+$('fDealAmount').addEventListener('input', dealHint);
+$('fDealQty').addEventListener('input', dealHint);
+
+// хинт закрытия: рыночная стоимость позиции в валюте счёта зачисления + отклонение факта
+const closeHint = () => {
+  if (!finData || !modalMode?.deal) return;
+  const acc = finData.accounts.find((x) => x.id === $('fCloseAccount').value);
+  $('fCloseCurrency').value = acc?.currency ?? '';
+  const hint = $('fCloseHint');
+  const rSym = finData.rates?.[modalMode.deal.symbol];
+  const rCur = acc ? finData.rates?.[acc.currency] : null;
+  if (!acc || !(rSym > 0) || !(rCur > 0)) {
+    hint.textContent = '';
+    return;
+  }
+  const market = (modalMode.deal.qty * rSym) / rCur;
+  const show = (v) => fmtNum(Number(v.toPrecision(8)));
+  const fact = Number($('fCloseAmount').value);
+  if (!(fact > 0)) {
+    hint.textContent = `Пусто — зачислим по рынку: ≈ ${show(market)} ${acc.currency}`;
+    return;
+  }
+  const pct = (fact / market - 1) * 100;
+  hint.innerHTML = `Рынок: ≈ ${show(market)} ${acc.currency} · факт <span class="${pct >= 0 ? 'pos' : 'neg'}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</span> к рынку`;
+};
+$('fCloseAccount').addEventListener('change', closeHint);
+$('fCloseAmount').addEventListener('input', closeHint);
+
+// при правке смена валюты пересчитывает баланс по курсу (историю операций конвертирует сервер)
+$('fAccCurrency').addEventListener('change', () => {
+  if (modalMode?.type !== 'account' || !modalMode.id) return;
+  const from = modalMode.lastCurrency;
+  const to = $('fAccCurrency').value;
+  modalMode.lastCurrency = to;
+  if (from === to || !finData?.rates?.[from] || !finData?.rates?.[to]) return;
+  const converted = (Number($('fAccBalance').value) || 0) * (finData.rates[from] / finData.rates[to]); // rate = USD за единицу — как changeAccountCurrency
+  $('fAccBalance').value = Math.round(converted * 1e6) / 1e6;
+});
+
+$('finAddAccount').addEventListener('click', () => openModal({ type: 'account', id: null }));
+$('finAddTx').addEventListener('click', () => {
+  if (!finData?.accounts.length) return alert('Сначала создайте счёт');
+  openModal({ type: 'tx', id: null });
+});
+$('finAddTransfer').addEventListener('click', () => {
+  if ((finData?.accounts?.length ?? 0) < 2) return alert('Для перевода нужно минимум два счёта');
+  openModal({ type: 'transfer', id: null });
+});
+$('finAddDeal').addEventListener('click', () => {
+  if (!finData?.accounts.length) return alert('Сначала создайте счёт — с него спишется покупка');
+  openModal({ type: 'deal', id: null });
+});
+
+finForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const m = modalMode;
+  if (!m) return;
+  let url, method, body;
+  if (m.type === 'account') {
+    const balance = Number($('fAccBalance').value || 0);
+    const name = $('fAccName').value.trim();
+    const isSavings = $('fAccSavings').checked;
+    if (m.id) {
+      url = `/api/finance/accounts/${m.id}`;
+      method = 'PATCH';
+      body = { name, balance, isSavings, currency: $('fAccCurrency').value };
+    } else {
+      url = '/api/finance/accounts';
+      method = 'POST';
+      body = { name, currency: $('fAccCurrency').value, startAmount: balance, isSavings };
+    }
+  } else if (m.type === 'transfer') {
+    url = '/api/finance/transfer';
+    method = 'POST';
+    txPage = 0; // новая запись — к первой странице
+    body = {
+      fromAccountId: $('fTransferFrom').value,
+      toAccountId: $('fTransferTo').value,
+      amount: Number($('fTransferAmount').value),
+      currency: $('fTransferCurrency').value,
+      toAmount: $('fTransferToAmount').value === '' ? null : Number($('fTransferToAmount').value),
+      description: $('fTransferDesc').value.trim(),
+    };
+  } else if (m.type === 'deal') {
+    url = '/api/finance/deals';
+    method = 'POST';
+    txPage = 0; // строка покупки — к первой странице
+    body = {
+      fromAccountId: $('fDealAccount').value,
+      amount: Number($('fDealAmount').value),
+      symbol: $('fDealSymbol').value,
+      qty: Number($('fDealQty').value),
+      alertUp: $('fDealAlertUp').value === '' ? null : Number($('fDealAlertUp').value),
+      alertDown: $('fDealAlertDown').value === '' ? null : Number($('fDealAlertDown').value),
+      note: $('fDealNote').value.trim(),
+    };
+  } else if (m.type === 'dealClose') {
+    url = `/api/finance/deals/${m.id}/close`;
+    method = 'POST';
+    txPage = 0; // строка продажи — к первой странице
+    body = {
+      toAccountId: $('fCloseAccount').value,
+      amount: $('fCloseAmount').value === '' ? null : Number($('fCloseAmount').value),
+    };
+  } else if (m.type === 'dealAlerts') {
+    url = `/api/finance/deals/${m.id}`;
+    method = 'PATCH';
+    body = {
+      alertUp: $('fAlertUp').value === '' ? null : Number($('fAlertUp').value),
+      alertDown: $('fAlertDown').value === '' ? null : Number($('fAlertDown').value),
+      note: $('fAlertNote').value.trim(),
+    };
+  } else {
+    body = {
+      accountId: $('fTxAccount').value,
+      kind: $('fTxKind').value,
+      amount: Number($('fTxAmount').value),
+      currency: $('fTxCurrency').value,
+      description: $('fTxDesc').value.trim(),
+      excluded: $('fTxExcluded').checked,
+    };
+    if (m.id) {
+      url = `/api/finance/transactions/${m.id}`;
+      method = 'PATCH';
+    } else {
+      url = '/api/finance/transactions';
+      method = 'POST';
+      txPage = 0; // новая запись — к первой странице
+    }
+  }
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) { location.href = '/login'; return; }
+    if (!res.ok) {
+      $('finErr').textContent = (await res.json().catch(() => ({}))).error ?? `Ошибка ${res.status}`;
+      return;
+    }
+    closeModal();
+    loadFinance().catch(console.error);
+  } catch {
+    $('finErr').textContent = 'Сеть/таймаут — попробуйте ещё раз';
+  }
+});
+
+async function sendFin(method, url, body) {
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (res.status === 401) { location.href = '/login'; return false; }
+    if (!res.ok) {
+      alert((await res.json().catch(() => ({}))).error ?? `Ошибка ${res.status}`);
+      return false;
+    }
+    return true;
+  } catch {
+    alert('Сеть/таймаут');
+    return false;
+  }
+}
+
+// кнопки ☆/✎/✕ в таблицах
+for (const tbodyId of ['finAccounts', 'finSavings', 'finTx']) {
+  $(tbodyId).addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    const { act, id } = btn.dataset;
+    if (act === 'acc-edit') return openModal({ type: 'account', id });
+    if (act === 'tx-edit') return openModal({ type: 'tx', id: Number(id) });
+    if (act === 'acc-def') {
+      if (await sendFin('PATCH', `/api/finance/accounts/${id}`, { setDefault: true })) {
+        loadFinance().catch(console.error);
+      }
+    }
+    if (act === 'acc-del' && confirm(`Удалить счёт «${btn.dataset.name}» вместе со всеми его операциями?`)) {
+      if (await sendFin('DELETE', `/api/finance/accounts/${id}`)) loadFinance().catch(console.error);
+    }
+    if (act === 'tx-del' && confirm('Удалить операцию? Баланс счёта будет скорректирован.')) {
+      if (await sendFin('DELETE', `/api/finance/transactions/${id}`)) loadFinance().catch(console.error);
+    }
+  });
+}
+
+// кнопки ✎/⤓/✕ в сделках
+$('finDeals').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const { act, id } = btn.dataset;
+  if (act === 'deal-alerts') return openModal({ type: 'dealAlerts', id });
+  if (act === 'deal-close') return openModal({ type: 'dealClose', id });
+  if (act === 'deal-del') {
+    const x = (finData.deals?.list ?? []).find((d) => d.id === id);
+    const msg =
+      x?.status === 'closed'
+        ? 'Удалить закрытую сделку? Обе строки (покупка и продажа) отменятся, балансы вернутся к прежним.'
+        : 'Удалить сделку? Списание вернётся на счёт, позиция уйдёт из богатства.';
+    if (confirm(msg) && (await sendFin('DELETE', `/api/finance/deals/${id}`))) {
+      loadFinance().catch(console.error);
+    }
+  }
+});
+
+// --- Администрирование: пользователи, активность, AI-токены, блокировка ---
+
+const fmtRel = (ts) => {
+  if (!ts) return '—';
+  const s = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+  if (s < 60) return 'только что';
+  if (s < 3600) return Math.floor(s / 60) + ' мин назад';
+  if (s < 86400) return Math.floor(s / 3600) + ' ч назад';
+  return Math.floor(s / 86400) + ' дн назад';
+};
+const fmtTok = (n) => (n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'k' : String(n));
+
+async function loadAdmin() {
+  const d = await api('/api/admin/users');
+  document.getElementById('adminMeta').textContent =
+    `${d.totals.users} польз. · заблокировано ${d.totals.blocked} · ` +
+    `AI: ↑${fmtTok(d.totals.tokensIn)} ↓${fmtTok(d.totals.tokensOut)} на ${d.totals.reports} отч.`;
+  document.getElementById('adminTbody').innerHTML = d.users
+    .map((u) => {
+      const name = u.firstName || u.username || u.telegramId;
+      const who =
+        `<div style="display:flex;align-items:center;gap:10px">` +
+        `<div class="fam-avatar" style="width:28px;height:28px;font-size:13px">${(name || '?').slice(0, 1)}</div>` +
+        `<div><div><b>${name}</b>${u.isAdmin ? ' <span class="mark">· админ</span>' : ''}${u.id === myId ? ' <span class="mark">· это вы</span>' : ''}</div>` +
+        `<div class="mark">@${u.username ?? '—'} · id ${u.telegramId}</div></div></div>`;
+      const ai = u.ai.reports ? `↑${fmtTok(u.ai.tokensIn)} ↓${fmtTok(u.ai.tokensOut)} · ${u.ai.reports} отч.` : '—';
+      const action = u.isAdmin
+        ? ''
+        : u.isBlocked
+          ? `<button class="mini-btn" data-act="unblock" data-id="${u.id}" data-name="${name}">Разблокировать</button>`
+          : `<button class="btn-ghost" data-act="block" data-id="${u.id}" data-name="${name}">Заблокировать</button>`;
+      return `<tr${u.isBlocked ? ' style="opacity:.55"' : ''}>` +
+        `<td>${who}</td>` +
+        `<td class="num">${new Date(u.createdAt).toLocaleDateString('ru-RU')}</td>` +
+        `<td class="num" title="${u.lastSeenAt ? new Date(u.lastSeenAt).toLocaleString('ru-RU') : 'нет активности'}">${u.isBlocked ? '🔒 ' : ''}${fmtRel(u.lastSeenAt)}</td>` +
+        `<td class="num">${u.counts.accounts}</td>` +
+        `<td class="num">${u.counts.transactions}</td>` +
+        `<td class="num">${ai}</td>` +
+        `<td>${action}</td></tr>`;
+    })
+    .join('');
+}
+
+document.getElementById('adminTbody').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const { act, id, name } = btn.dataset;
+  if (act === 'block' && !confirm(`Заблокировать ${name}? Бот и дашборд перестанут ему отвечать.`)) return;
+  if (await sendFin('POST', `/api/admin/users/${id}/${act}`)) {
+    loadAdmin().catch(console.error);
+  }
+});
+
+// Приглашение в семью: бот доставит сообщение с кнопкой подтверждения адресату
+$('famInviteBtn').addEventListener('click', async () => {
+  const username = $('famInviteName').value.trim();
+  if (!username) return alert('Введите username — например, @Deadangy');
+  const btn = $('famInviteBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/family/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    });
+    if (res.status === 401) { location.href = '/login'; return; }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      $('famStatus').innerHTML = `<span class="neg">${data.error ?? 'Ошибка'}</span>`;
+      $('famInviteRow').style.display = 'none';
+      return;
+    }
+    if (data.sent) {
+      $('famStatus').innerHTML = '<span class="pos">✓ Приглашение отправлено — ждём подтверждения</span>';
+      $('famInviteRow').style.display = 'none';
+    } else {
+      $('famStatus').innerHTML = `<span class="neg">${data.error}</span>`;
+      $('famInviteLink').value = data.url;
+      $('famInviteRow').style.display = '';
+    }
+  } catch {
+    $('famStatus').innerHTML = '<span class="neg">Сеть/таймаут — попробуйте ещё раз</span>';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$('famInviteCopy').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText($('famInviteLink').value);
+    $('famInviteCopy').textContent = '✓ Скопировано';
+    setTimeout(() => ($('famInviteCopy').textContent = 'Скопировать'), 2000);
+  } catch { /* clipboard может быть запрещён — ссылка видна в поле */ }
+});
+
+// 1д–30д: живые часовые снапшоты; 180д–5л: дневная ретроспектива из цен
+const LIVE_RANGES = new Set(['1d', '7d', '30d']);
+const LIVE_RANGE_MAP = { '1d': '24h', '7d': '7d', '30d': '30d' };
+const HIST_RANGE_MAP = { '180d': '180d', '1y': '1y', 'all': 'all' };
+const RANGE_LABELS = {
+  '1d': '1 день', '7d': '7 дней', '30d': '30 дней',
+  '180d': '180 дней', '1y': '1 год', 'all': '5 лет',
+};
+const METRIC_LABELS = { rui: 'RUI', r: 'R (доходность)', price: 'Цена, $' };
+
+const fmt = (x) => (x >= 0 ? '+' : '') + x.toFixed(2) + '%';
+const fmtPrice = (v) =>
+  v == null ? '—'
+  : v >= 1000 ? '$' + v.toLocaleString('en-US', { maximumFractionDigits: 0 })
+  : v >= 1 ? '$' + v.toFixed(2)
+  : '$' + v.toPrecision(3);
+
+function setActive(id, value) {
+  document.querySelectorAll(`#${id} button`).forEach((b) => b.classList.toggle('active', b.dataset.v === value));
+}
+
+function bindGroup(id, key) {
+  const el = document.getElementById(id);
+  el.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    state[key] = btn.dataset.v;
+    // у цен нет окон; короткие диапазоны недоступны в ретроспективе
+    if (state.metric === 'price' && LIVE_RANGES.has(state.range)) {
+      state.range = '1y';
+      setActive('range', state.range);
+    }
+    setActive(id, state[key]);
+    document.getElementById('win').style.display = state.metric === 'price' ? 'none' : '';
+    document.getElementById('winLabel').style.display = state.metric === 'price' ? 'none' : '';
+    coinAi.reset(); // аналитика привязана к периоду
+    loadAll();
+  });
+}
+bindGroup('metric', 'metric');
+bindGroup('win', 'win');
+bindGroup('range', 'range');
+
+async function api(path) {
+  const res = await fetch(path);
+  if (res.status === 401) { location.href = '/login'; throw new Error('unauthorized'); }
+  if (!res.ok) throw new Error('API ' + res.status);
+  return res.json();
+}
+
+async function loadChart() {
+  const isPrice = state.metric === 'price';
+  let url, field, source;
+  if (isPrice) {
+    url = `/api/prices?range=${HIST_RANGE_MAP[state.range]}`;
+    field = 'price';
+    source = 'дневные цены';
+  } else if (LIVE_RANGES.has(state.range)) {
+    url = `/api/snapshots?window=${state.win}&range=${LIVE_RANGE_MAP[state.range]}&metric=${state.metric}`;
+    field = state.metric;
+    source = 'живые снапшоты (часовые)';
+  } else {
+    url = `/api/history?window=${state.win}&range=${HIST_RANGE_MAP[state.range]}&metric=${state.metric}`;
+    field = state.metric;
+    source = 'расчёт по дневным ценам';
+  }
+  const data = await api(url);
+
+  const series = [...data.series]
+    .sort(bySymbolOrder)
+    .map((s) => ({
+      name: s.symbol,
+      type: 'line',
+      showSymbol: false,
+      smooth: false,
+      lineStyle: { width: 2 },
+      color: colorOf(s.symbol),
+      data: data.ts.map((t, j) => [t, s[field][j]]),
+    }));
+  if (!isPrice) {
+    series.push({
+      name: 'M (средняя)',
+      type: 'line',
+      showSymbol: false,
+      lineStyle: { width: 1.5, type: 'dashed', color: '#94a3b8' },
+      data: data.ts.map((t, j) => [t, data.mean[j]]),
+    });
+  }
+  chart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#0f172a',
+      borderColor: '#334155',
+      textStyle: { color: '#e2e8f0', fontSize: 12 },
+      valueFormatter: isPrice ? fmtPrice : (v) => (v == null ? '—' : v.toFixed(2) + '%'),
+    },
+    legend: { textStyle: { color: '#94a3b8', fontSize: 12 }, top: 4 },
+    grid: { left: 56, right: 20, top: 40, bottom: 56 },
+    xAxis: {
+      type: 'time',
+      axisLine: { lineStyle: { color: '#334155' } },
+      axisLabel: { color: '#94a3b8', hideOverlap: true },
+    },
+    yAxis: isPrice
+      ? {
+          // BTC и TRX различаются на ~5 порядков — только лог-шкала
+          type: 'log',
+          axisLabel: { color: '#94a3b8', formatter: (v) => fmtPrice(v) },
+          splitLine: { lineStyle: { color: '#233047' } },
+        }
+      : {
+          type: 'value',
+          axisLabel: { color: '#94a3b8', formatter: '{value}%' },
+          splitLine: { lineStyle: { color: '#233047' } },
+        },
+    dataZoom: [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 12, borderColor: '#334155', textStyle: { color: '#64748b' } }],
+    series,
+  }, { notMerge: true });
+  const winTxt = isPrice ? '' : ` · окно ${state.win}`;
+  document.getElementById('meta').textContent =
+    `${METRIC_LABELS[state.metric]} · ${data.ts.length} точек · диапазон ${RANGE_LABELS[state.range]}${winTxt} · ${source} · построено ${new Date().toLocaleTimeString('ru-RU')}`;
+}
+
+async function loadSummary() {
+  const data = await api(`/api/summary?window=${state.win}&range=${state.range}`);
+  const title = document.getElementById('sumTitle');
+  const period = data.mode === 'live'
+    ? `окно ${state.win} · живой снимок${data.ts ? ' от ' + new Date(data.ts).toLocaleString('ru-RU') : ''}`
+    : `${RANGE_LABELS[state.range]} · ${data.from} → ${data.to} (из дневных цен)`;
+  title.textContent = 'Сейчас · ' + period;
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = data.items.length
+    ? data.items.map((it) => {
+        const cls = it.rui >= 0 ? 'pos' : 'neg';
+        const mark = it.rui > 0.05 ? '<span class="mark">← отстала (недооценена)</span>'
+                   : it.rui < -0.05 ? '<span class="mark">← перегрета</span>' : '';
+        return `<tr><td><b>${it.symbol}</b></td><td class="num">${fmtPrice(it.price)}</td>` +
+               `<td class="num ${it.r >= 0 ? 'pos' : 'neg'}">${fmt(it.r)}</td>` +
+               `<td class="num ${cls}">${fmt(it.rui)}</td><td>${mark}</td></tr>`;
+      }).join('')
+    : '<tr><td colspan="5" style="color:#64748b">Данных по периоду ещё нет</td></tr>';
+}
+
+// --- Вкладка FIAT: RUI фиатных валют (USD · RUB · THB · KRW) ---
+// История = дневные кросс-курсы через BTC (CoinGecko market_chart, 365 дней),
+// поэтому период = окно, а «1 год» доступен только в режиме «Курс».
+const FIAT_SYMBOLS = ['USD', 'RUB', 'THB', 'KRW'];
+const colorOfFiat = (s) => PALETTE[FIAT_SYMBOLS.indexOf(s) % PALETTE.length] ?? '#94a3b8';
+const byFiatOrder = (a, b) => FIAT_SYMBOLS.indexOf(a.symbol) - FIAT_SYMBOLS.indexOf(b.symbol);
+const FIAT_RANGE_LABELS = { '7d': '7 дней', '30d': '30 дней', '180d': '180 дней', '1y': '1 год' };
+const fmtFx = (v) => (v == null ? '—' : v >= 100 ? v.toFixed(1) : v.toFixed(2));
+const stateF = { metric: 'rui', range: '30d' };
+
+function bindFiatGroup(id, key) {
+  document.getElementById(id).addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    stateF[key] = btn.dataset.v;
+    // RUI/R за 1 год нельзя (нужна база за 730 дней, истории — 365)
+    if (stateF.metric !== 'fx' && stateF.range === '1y') {
+      stateF.range = '30d';
+      setActive('fRange', stateF.range);
+    }
+    setActive(id, stateF[key]);
+    document.querySelector('#fRange button[data-v="1y"]').style.display = stateF.metric === 'fx' ? '' : 'none';
+    fiatAi.reset(); // аналитика привязана к периоду
+    loadFiatChart().catch(console.error);
+    loadFiatSummary().catch(console.error);
+  });
+}
+bindFiatGroup('fMetric', 'metric');
+bindFiatGroup('fRange', 'range');
+
+async function loadFiatChart() {
+  const isFx = stateF.metric === 'fx';
+  let url, field;
+  if (isFx) {
+    url = `/api/prices?set=fiat&range=${stateF.range}`;
+    field = 'price';
+  } else {
+    url = `/api/history?set=fiat&window=${stateF.range}&range=${stateF.range}&metric=${stateF.metric}`;
+    field = stateF.metric;
+  }
+  const data = await api(url);
+
+  const series = [...data.series]
+    .sort(byFiatOrder)
+    .map((s) => ({
+      name: s.symbol,
+      type: 'line',
+      showSymbol: false,
+      smooth: false,
+      lineStyle: { width: 2 },
+      color: colorOfFiat(s.symbol),
+      // API хранит USD за единицу; график — в привычном виде «единиц за $1»
+      data: isFx
+        ? data.ts.map((t, j) => [t, s.price[j] ? 1 / s.price[j] : null])
+        : data.ts.map((t, j) => [t, s[field][j]]),
+    }));
+  if (!isFx) {
+    series.push({
+      name: 'M (средняя)',
+      type: 'line',
+      showSymbol: false,
+      lineStyle: { width: 1.5, type: 'dashed', color: '#94a3b8' },
+      data: data.ts.map((t, j) => [t, data.mean[j]]),
+    });
+  }
+  fiatChart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#0f172a',
+      borderColor: '#334155',
+      textStyle: { color: '#e2e8f0', fontSize: 12 },
+      valueFormatter: isFx ? (v) => (v == null ? '—' : fmtFx(v) + ' ед./$') : (v) => (v == null ? '—' : v.toFixed(2) + '%'),
+    },
+    legend: { textStyle: { color: '#94a3b8', fontSize: 12 }, top: 4 },
+    grid: { left: 56, right: 20, top: 40, bottom: 56 },
+    xAxis: {
+      type: 'time',
+      axisLine: { lineStyle: { color: '#334155' } },
+      axisLabel: { color: '#94a3b8', hideOverlap: true },
+    },
+    yAxis: isFx
+      ? {
+          type: 'value',
+          scale: true,
+          axisLabel: { color: '#94a3b8', formatter: (v) => fmtFx(v) },
+          splitLine: { lineStyle: { color: '#233047' } },
+        }
+      : {
+          type: 'value',
+          axisLabel: { color: '#94a3b8', formatter: '{value}%' },
+          splitLine: { lineStyle: { color: '#233047' } },
+        },
+    dataZoom: [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 12, borderColor: '#334155', textStyle: { color: '#64748b' } }],
+    series,
+  }, { notMerge: true });
+  const metricTxt = isFx ? 'Курс, ед./$' : stateF.metric.toUpperCase();
+  document.getElementById('fiatMeta').textContent =
+    `${metricTxt} · ${data.ts.length} точек · период ${FIAT_RANGE_LABELS[stateF.range]} · дневные курсы (кросс через BTC) · построено ${new Date().toLocaleTimeString('ru-RU')}`;
+}
+
+async function loadFiatSummary() {
+  const data = await api(`/api/summary?set=fiat&range=${stateF.range}`);
+  document.getElementById('fSumTitle').textContent =
+    `Сейчас · ${FIAT_RANGE_LABELS[stateF.range]} · ${data.from} → ${data.to} (из дневных курсов)`;
+  const tbody = document.getElementById('fiatTbody');
+  tbody.innerHTML = data.items.length
+    ? data.items.map((it) => {
+        const cls = it.rui >= 0 ? 'pos' : 'neg';
+        const mark = it.rui > 0.05 ? '<span class="mark">← недооценена</span>'
+                   : it.rui < -0.05 ? '<span class="mark">← перегрета</span>' : '';
+        return `<tr><td><b>${it.symbol}</b></td><td class="num">${fmtFx(it.price ? 1 / it.price : null)}</td>` +
+               `<td class="num ${it.r >= 0 ? 'pos' : 'neg'}">${fmt(it.r)}</td>` +
+               `<td class="num ${cls}">${fmt(it.rui)}</td><td>${mark}</td></tr>`;
+      }).join('')
+    : '<tr><td colspan="5" style="color:#64748b">Данных по периоду ещё нет</td></tr>';
+}
+
+// --- Калькулятор обмена: фиат + коины, курс правится вручную (дефолт — рыночный) ---
+const CALC_CURRENCIES = ['USD', 'RUB', 'THB', 'KRW', ...SYMBOLS];
+let calcRates = null; // { USD: 1, RUB: …, BTC: … } — единиц за 1 USD
+let calcRatesAt = 0;
+
+async function ensureCalcRates() {
+  if (calcRates && Date.now() - calcRatesAt < 300_000) return calcRates; // клиентский TTL 5 мин
+  const d = await api('/api/rates');
+  calcRates = d.rates;
+  calcRatesAt = Date.now();
+  return calcRates;
+}
+
+const fmtCalc = (v) =>
+  v >= 1000 ? v.toLocaleString('en-US', { maximumFractionDigits: 2 }) : Number(v.toPrecision(8));
+
+// cfg: { from, to, via } — стартовая пара валют и промежуточная (опционально)
+function makeCalc(mountId, cfg) {
+  const root = document.getElementById('calcTpl').content.firstElementChild.cloneNode(true);
+  document.getElementById(mountId).appendChild(root);
+  const q = (s) => root.querySelector(s);
+  const el = {
+    amt: q('.calc-amt'), res: q('.calc-res'), from: q('.calc-from'), to: q('.calc-to'), via: q('.calc-via'),
+    rate: q('.calc-rate'), rate2: q('.calc-rate2'), fromName: q('.calc-from-name'), toName: q('.calc-to-name'),
+    midName: q('.calc-mid-name'), viaName: q('.calc-via-name'), leg2: q('.calc-leg2'), total: q('.calc-total'),
+    hint: q('.calc-hint'), swap: q('.calc-swap'), reset: q('.calc-reset'),
+  };
+  let ov1 = null; // правка ноги 1 (from → via или from → to); null = рыночный
+  let ov2 = null; // правка ноги 2 (via → to), только в режиме «через»
+  let lockAmt = false; // 🔒 сумма «отдаёте» зафиксирована
+  let lockRes = false; // 🔒 сумма «получаете» зафиксирована
+  const locks = { amt: q('[data-lock="amt"]'), res: q('[data-lock="res"]') };
+
+  const mkt = (a, b) => {
+    const x = calcRates?.[a];
+    const y = calcRates?.[b];
+    return x > 0 && y > 0 ? y / x : null;
+  };
+  const via = () => el.via.value || null;
+  // итоговый курс пары: одна сделка (напрямую) или цепочка из двух через промежуточную
+  const curRate = () => {
+    const v = via();
+    const r1 = ov1 ?? mkt(el.from.value, v ?? el.to.value);
+    if (r1 == null || r1 <= 0) return null;
+    if (!v) return r1;
+    const r2 = ov2 ?? mkt(v, el.to.value);
+    if (r2 == null || r2 <= 0) return null;
+    return r1 * r2;
+  };
+
+  // список промежуточных: все валюты, кроме концов пары
+  const buildViaOptions = () => {
+    const cur = el.via.value || cfg.via || '';
+    el.via.innerHTML =
+      '<option value="">напрямую</option>' +
+      CALC_CURRENCIES.filter((c) => c !== el.from.value && c !== el.to.value).map((c) => `<option>${c}</option>`).join('');
+    el.via.value = cur !== el.from.value && cur !== el.to.value && CALC_CURRENCIES.includes(cur) ? cur : '';
+  };
+
+  const renderRate = () => {
+    const v = via();
+    const m = mkt(el.from.value, el.to.value); // прямой рыночный кросс — база для сравнения
+    el.fromName.textContent = el.from.value;
+    el.toName.textContent = el.to.value;
+    el.midName.textContent = v ?? el.to.value;
+    el.viaName.textContent = v ?? '';
+    el.leg2.style.display = v ? '' : 'none';
+    const r = curRate();
+    if (r == null) {
+      el.rate.value = '';
+      el.rate2.value = '';
+      el.total.textContent = '';
+      el.hint.textContent = 'курсы недоступны — попробуйте позже';
+      return;
+    }
+    const r1 = ov1 ?? mkt(el.from.value, v ?? el.to.value);
+    // не затираем поля, пока пользователь в них печатает
+    if (document.activeElement !== el.rate) el.rate.value = Number(r1.toPrecision(8));
+    if (v) {
+      const r2 = ov2 ?? mkt(v, el.to.value);
+      if (document.activeElement !== el.rate2) el.rate2.value = Number(r2.toPrecision(8));
+      el.total.innerHTML = `Итог: 1 ${el.from.value} = <b>${fmtCalc(r)}</b> ${el.to.value}`;
+      const edited = ov1 != null || ov2 != null;
+      el.hint.innerHTML = !edited || m == null
+        ? 'обе ноги по рыночному'
+        : `рынок напрямую: ${fmtCalc(m)} · <span class="${r >= m ? 'neg' : 'pos'}">${r >= m ? '+' : ''}${((r / m - 1) * 100).toFixed(1)}%</span> к рынку`;
+    } else {
+      el.rate2.value = '';
+      el.total.textContent = '';
+      el.hint.innerHTML = ov1 == null || m == null
+        ? 'рыночный курс'
+        : `рынок: ${fmtCalc(m)} · <span class="${ov1 >= m ? 'neg' : 'pos'}">${ov1 >= m ? '+' : ''}${((ov1 / m - 1) * 100).toFixed(1)}%</span> к рынку`;
+    }
+  };
+
+  const setNum = (input, v) => {
+    input.value = Number.isFinite(v) && v > 0 ? Number(v.toPrecision(8)) : '';
+  };
+  const recalc = (src) => {
+    const r = curRate();
+    if (!r || r <= 0) return;
+    if (src === 'res') setNum(el.amt, Number(el.res.value) / r);
+    else setNum(el.res, Number(el.amt.value) * r);
+  };
+  // при правке курса/валют пересчитываем свободное поле (замкнутое не трогаем)
+  const recalcFree = () => recalc(lockRes ? 'res' : 'amt');
+
+  // 🔒 замок: правка свободной суммы пересчитывает курс из соотношения сумм
+  const updateRateFromAmounts = () => {
+    const a = Number(el.amt.value);
+    const s = Number(el.res.value);
+    if (!(a > 0) || !(s > 0)) return;
+    const total = s / a;
+    if (via()) {
+      const l1 = ov1 ?? mkt(el.from.value, via());
+      if (l1 > 0) ov2 = total / l1; // расчётный итог ложится во вторую ногу
+    } else {
+      ov1 = total;
+    }
+    renderRate();
+  };
+
+  const renderLocks = () => {
+    for (const [key, btn] of Object.entries(locks)) {
+      const on = key === 'amt' ? lockAmt : lockRes;
+      btn.textContent = on ? '🔒' : '🔓';
+      btn.classList.toggle('on', on);
+      btn.title = on ? 'Сумма зафиксирована — нажмите, чтобы отпустить' : 'Зафиксировать сумму: правка второй суммы пересчитает курс';
+    }
+    el.amt.disabled = lockAmt;
+    el.res.disabled = lockRes;
+  };
+  locks.amt.addEventListener('click', () => {
+    lockAmt = !lockAmt;
+    if (lockAmt) lockRes = false;
+    renderLocks();
+  });
+  locks.res.addEventListener('click', () => {
+    lockRes = !lockRes;
+    if (lockRes) lockAmt = false;
+    renderLocks();
+  });
+
+  el.amt.addEventListener('input', () => {
+    if (lockRes) return updateRateFromAmounts();
+    recalc('amt');
+  });
+  el.res.addEventListener('input', () => {
+    if (lockAmt) return updateRateFromAmounts();
+    recalc('res');
+  });
+  const parseRate = (input) => {
+    const v = Number(input.value);
+    return Number.isFinite(v) && v > 0 ? v : null;
+  };
+  el.rate.addEventListener('input', () => {
+    ov1 = parseRate(el.rate);
+    renderRate();
+    recalcFree();
+  });
+  el.rate2.addEventListener('input', () => {
+    ov2 = parseRate(el.rate2);
+    renderRate();
+    recalcFree();
+  });
+  el.reset.addEventListener('click', () => {
+    ov1 = null;
+    ov2 = null;
+    renderRate();
+    recalcFree();
+  });
+  // смена цепочки сбрасывает правки ног на рыночные
+  el.via.addEventListener('change', () => {
+    ov1 = null;
+    ov2 = null;
+    renderRate();
+    recalcFree();
+  });
+
+  // смена валюты сбрасывает курс на рыночный; одинаковые валюты не даём выбрать
+  let pair = [cfg.from, cfg.to];
+  const onCurrency = () => {
+    pair = [el.from.value, el.to.value];
+    if (via() && (via() === el.from.value || via() === el.to.value)) el.via.value = '';
+    ov1 = null;
+    ov2 = null;
+    buildViaOptions();
+    renderRate();
+    recalcFree();
+  };
+  el.from.addEventListener('change', () => {
+    if (el.from.value === el.to.value) el.to.value = pair[0];
+    onCurrency();
+  });
+  el.to.addEventListener('change', () => {
+    if (el.to.value === el.from.value) el.from.value = pair[1];
+    onCurrency();
+  });
+
+  el.swap.addEventListener('click', () => {
+    const f = el.from.value;
+    el.from.value = el.to.value;
+    el.to.value = f;
+    pair = [el.from.value, el.to.value];
+    if (via()) {
+      ov1 = null; // ноги цепочки меняются — правки не переносятся
+      ov2 = null;
+    } else {
+      ov1 = ov1 != null ? 1 / ov1 : null; // прямой курс инвертируем, правку сохраняем
+    }
+    const a = el.amt.value;
+    el.amt.value = el.res.value;
+    el.res.value = a;
+    buildViaOptions();
+    renderRate();
+  });
+
+  let inited = false;
+  const init = async () => {
+    if (inited) return refresh();
+    inited = true;
+    for (const sel of [el.from, el.to]) {
+      sel.innerHTML = CALC_CURRENCIES.map((c) => `<option>${c}</option>`).join('');
+    }
+    el.from.value = cfg.from;
+    el.to.value = cfg.to;
+    buildViaOptions();
+    await refresh();
+  };
+  const refresh = async () => {
+    try { await ensureCalcRates(); } catch { /* renderRate покажет «недоступны» */ }
+    renderRate();
+    // при замке суммы не пересчитываем — фиксацию пользователя не сбиваем
+    if (!lockAmt && !lockRes) recalc('amt');
+  };
+  return { init, refresh };
+}
+
+const coinCalc = makeCalc('calcCoin', { from: 'USD', to: 'BTC' });
+const fiatCalc = makeCalc('calcFiat', { from: 'RUB', to: 'THB', via: 'USD' });
+
+// --- AI-анализ (GLM): фабрика блока — по экземпляру на раздел (COIN и FIAT) ---
+
+const AI_ERRORS = {
+  ai_disabled: 'ИИ отключён: на сервере не задан GLM_API_KEY',
+  ai_error: 'ИИ не ответил, попробуйте позже',
+  no_data: 'По выбранному периоду пока нет данных',
+};
+
+function mdToHtml(md) {
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>');
+  let html = '';
+  let inList = false;
+  const closeList = () => { if (inList) { html += '</ul>'; inList = false; } };
+  for (const raw of md.split('\n')) {
+    const line = raw.trim();
+    if (/^#{1,6}\s+/.test(line)) { closeList(); html += `<h3>${inline(line.replace(/^#{1,6}\s+/, ''))}</h3>`; }
+    else if (/^([-*•]|\d+\.)\s+/.test(line)) {
+      if (!inList) { html += '<ul>'; inList = true; }
+      html += `<li>${inline(line.replace(/^([-*•]|\d+\.)\s+/, ''))}</li>`;
+    }
+    else if (line === '') { closeList(); }
+    else { closeList(); html += `<p>${inline(line)}</p>`; }
+  }
+  closeList();
+  return html;
+}
+
+// cfg: { ids: {btn,status,period,extra,out,history}, getReq, itemTitle, listUrl }
+function makeAiBlock(cfg) {
+  const el = (k) => document.getElementById(cfg.ids[k]);
+  const reset = () => {
+    el('out').innerHTML = '';
+    el('status').textContent = '';
+    el('period').textContent = '';
+    el('btn').disabled = false;
+  };
+  const run = async () => {
+    const btn = el('btn');
+    const status = el('status');
+    btn.disabled = true;
+    status.textContent = 'ИИ собирает данные по периоду (с веб-поиском) — до двух минут…';
+    el('out').innerHTML = '';
+    try {
+      const res = await fetch('/api/ai/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...cfg.getReq(), extra: el('extra').value.trim() }),
+      });
+      if (res.status === 401) { location.href = '/login'; return; }
+      const data = await res.json();
+      if (!res.ok) {
+        status.textContent = AI_ERRORS[data.error] ?? AI_ERRORS.ai_error;
+        return;
+      }
+      el('period').textContent = `· ${data.period}`;
+      status.textContent = data.cached
+        ? `из кэша — отчёт от ${new Date(data.createdAt).toLocaleString('ru-RU')} (модель ${data.model})`
+        : `модель ${data.model} · сохранено в архив`;
+      el('out').innerHTML = mdToHtml(data.text);
+      loadHistory().catch(console.error);
+    } catch {
+      status.textContent = 'Сеть/таймаут — попробуйте ещё раз';
+    } finally {
+      btn.disabled = false;
+    }
+  };
+  // --- Архив аналитики ---
+  const loadHistory = async () => {
+    const data = await api(cfg.listUrl);
+    el('history').innerHTML = data.reports.length
+      ? data.reports
+          .map(
+            (r) =>
+              `<button class="ai-hist-item" data-id="${r.id}">` +
+              `<span>${cfg.itemTitle(r)}</span>` +
+              `<span class="when">${new Date(r.createdAt).toLocaleString('ru-RU')}</span></button>`
+          )
+          .join('')
+      : '<div class="ai-hist-empty">Пока пусто — нажмите «Собрать аналитику»</div>';
+  };
+  const openReport = async (id) => {
+    try {
+      const r = await api(`/api/ai/reports/${id}`);
+      el('period').textContent = `· с ${r.periodFrom} по ${r.periodTo}`;
+      el('status').textContent = `из архива · ${new Date(r.createdAt).toLocaleString('ru-RU')} · модель ${r.model}`;
+      el('out').innerHTML = mdToHtml(r.text);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch {
+      el('status').textContent = 'Не удалось открыть отчёт';
+    }
+  };
+  el('btn').addEventListener('click', run);
+  el('history').addEventListener('click', (e) => {
+    const item = e.target.closest('.ai-hist-item');
+    if (item) openReport(item.dataset.id);
+  });
+  return { reset, loadHistory };
+}
+
+const coinAi = makeAiBlock({
+  ids: { btn: 'aiBtn', status: 'aiStatus', period: 'aiPeriod', extra: 'aiExtra', out: 'aiOut', history: 'aiHistory' },
+  getReq: () => ({ window: state.win, range: state.range }),
+  itemTitle: (r) =>
+    `${RANGE_LABELS[r.range] ?? r.range}${r.window ? ` (${r.window})` : ''}${r.extra ? ' ✍️' : ''} · ${r.periodFrom} → ${r.periodTo} · ${r.model}`,
+  listUrl: '/api/ai/reports',
+});
+
+const fiatAi = makeAiBlock({
+  ids: { btn: 'fAiBtn', status: 'fAiStatus', period: 'fAiPeriod', extra: 'fAiExtra', out: 'fAiOut', history: 'fAiHistory' },
+  getReq: () => ({ set: 'fiat', range: stateF.range }),
+  itemTitle: (r) =>
+    `${FIAT_RANGE_LABELS[r.range] ?? r.range}${r.extra ? ' ✍️' : ''} · ${r.periodFrom} → ${r.periodTo} · ${r.model}`,
+  listUrl: '/api/ai/reports?set=fiat',
+});
+
+function loadAll() {
+  if (activeTab === 'fin' || activeTab === 'prof') {
+    loadFinance().catch(console.error);
+  } else if (activeTab === 'fiat') {
+    loadFiatChart().catch(console.error);
+    loadFiatSummary().catch(console.error);
+  } else {
+    loadChart().catch(console.error);
+    loadSummary().catch(console.error);
+  }
+}
+
+(async () => {
+  try {
+    const me = await api('/api/me');
+    myId = me.id ?? null;
+    document.getElementById('who').textContent = me.firstName || me.username || '';
+    if (me.photoUrl) {
+      const img = document.getElementById('avatar');
+      img.src = me.photoUrl; img.style.display = '';
+    }
+    if (me.isAdmin) document.getElementById('adminTabBtn').style.display = '';
+  } catch (e) { /* уже редиректнули на /login */ }
+  loadAll();
+  coinAi.loadHistory().catch(console.error); // архив COIN грузим сразу, FIAT — при первом открытии вкладки
+  setInterval(loadAll, 60_000);
+})();
+
+document.getElementById('logout').addEventListener('click', async () => {
+  await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+  location.href = '/login';
+});
+</script>
+</body>
+</html>
